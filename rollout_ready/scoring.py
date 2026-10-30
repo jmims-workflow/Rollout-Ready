@@ -3,22 +3,30 @@
 - Criterion score: integer 1 to 5.
 - Case score: mean of its criterion scores, averaged across repeats.
 - Change: new minus current, rounded to 2 decimal places before comparing.
-- Worse: change <= -threshold, or a check that passed now fails.
+- Worse: change <= -threshold, a check that passed now fails, or the new
+  version newly misses a deal-breaker (scores it DEAL_BREAKER_CUTOFF or lower).
 - Better: change >= threshold, or a check that failed now passes.
 - Otherwise: no clear change.
+- The verdict is never "Ready to roll out" while the new version misses a
+  deal-breaker on any example.
+
+User-facing words: a case is an "example", Worse / Better / No clear change
+are "Got worse" / "Got better" / "About the same".
 """
 
 from __future__ import annotations
 
 from statistics import mean
 
-from .models import Run
+from .models import Criterion, Run
 
 WORSE = "worse"
 BETTER = "better"
 SAME = "same"
 
-RESULT_LABELS = {WORSE: "Worse", BETTER: "Better", SAME: "No clear change"}
+RESULT_LABELS = {WORSE: "Got worse", BETTER: "Got better", SAME: "About the same"}
+
+DEAL_BREAKER_CUTOFF = 2  # a deal-breaker scored this or lower is missed
 
 READY = "Ready to roll out"
 NO_DIFFERENCE = "No clear difference"
@@ -62,27 +70,39 @@ def score_change(current: float, new: float) -> float:
     return round(new - current, 2)
 
 
+def is_missed(score: float) -> bool:
+    return score <= DEAL_BREAKER_CUTOFF
+
+
+def missed_deal_breakers(runs: list[Run], rubric: list[Criterion]) -> list[Criterion]:
+    """Deal-breakers this output misses, using the mean score across repeats."""
+    return [c for c in rubric if c.deal_breaker and is_missed(criterion_mean(runs, c.id))]
+
+
 def classify(
     current: float,
     new: float,
     threshold: float,
     current_checks: list[bool] = (),
     new_checks: list[bool] = (),
+    newly_missed: bool = False,
 ) -> str:
     change = score_change(current, new)
     pairs = list(zip(current_checks, new_checks))
     check_broke = any(c and not n for c, n in pairs)
     check_fixed = any(n and not c for c, n in pairs)
-    if change <= -threshold or check_broke:
+    if change <= -threshold or check_broke or newly_missed:
         return WORSE
     if change >= threshold or check_fixed:
         return BETTER
     return SAME
 
 
-def verdict(worse: int, better: int) -> str:
+def verdict(worse: int, better: int, misses_deal_breaker: bool = False) -> str:
     if worse == 0:
-        return READY if better >= 1 else NO_DIFFERENCE
+        if better >= 1:
+            return NOT_READY if misses_deal_breaker else READY
+        return NO_DIFFERENCE
     return NOT_READY if better > worse else KEEP_CURRENT
 
 
@@ -91,7 +111,7 @@ def blocks_rollout(verdict_text: str) -> bool:
 
 
 def _cases(n: int) -> str:
-    return "case" if n == 1 else "cases"
+    return "example" if n == 1 else "examples"
 
 
 def _problems(n: int) -> str:
@@ -125,8 +145,13 @@ def explanation(
         return f"{new_title} made {better} {_cases(better)} better and none worse. The average score {avg}."
     if verdict_text == NO_DIFFERENCE:
         return (
-            f"{new_title} did about the same as {current_title.lower()} on every test case, "
+            f"{new_title} did about the same as {current_title.lower()} on every example, "
             f"so nothing got clearly better or worse. The average score {avg}."
+        )
+    if verdict_text == NOT_READY and not worse:
+        return (
+            f"{new_title} made {better} {_cases(better)} better and none worse, "
+            f"but it still misses a deal-breaker. The average score {avg}."
         )
     if better:
         counts = f"{new_title} made {better} {_cases(better)} better and {worse} {_cases(worse)} worse."

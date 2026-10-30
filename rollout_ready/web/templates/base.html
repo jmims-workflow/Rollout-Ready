@@ -1,9 +1,9 @@
-{% from "_macros.html" import icon, notice %}<!doctype html>
+{% from "_macros.html" import icon, notice, logo %}<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}{% endblock %}Rollout Ready: Test a prompt change before your team sees it.</title>
+<title>{% block title %}{% endblock %}Rollout Ready: Test a prompt change before your team sees it</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
@@ -16,21 +16,23 @@
 <header class="site-header">
   <div class="wrap header-inner">
     <a class="brand" href="/">
-      <img class="brand-mark" src="/static/logo.svg" alt="" width="36" height="36">
-      <span class="brand-text"><span class="brand-name">Rollout Ready</span><span class="tagline">Test a prompt change before your team sees it.</span></span>
+      {{ logo() }}
+      <span class="brand-text"><span class="brand-name">Rollout Ready</span><span class="tagline">Test a prompt change before your team sees it</span></span>
+      {% if nav != 'home' %}<span class="visually-hidden">, home</span>{% endif %}
     </a>
+    {% if settings.is_live %}
+    <span class="mode-pill mode-live">{{ icon('dot') }}Live: runs on Claude</span>
+    {% else %}
+    <span class="mode-pill mode-demo">{{ icon('dot') }}Demo: sample results</span>
+    {% endif %}
+    {% if nav != 'home' %}
     <nav class="main-nav" aria-label="Main">
       <ul>
-        <li><a href="/"{% if nav == 'compare' %} aria-current="page"{% endif %}>Compare</a></li>
-        <li><a href="/test"{% if nav == 'test' %} aria-current="page"{% endif %}>Test a new version</a></li>
-        <li><a href="/suites"{% if nav == 'suites' %} aria-current="page"{% endif %}>Suites</a></li>
-        <li><a href="/scoring"{% if nav == 'scoring' %} aria-current="page"{% endif %}>How scoring works</a></li>
+        {% for key, href, label in [('home', '/', 'Home'), ('test', '/test', 'Test a change'), ('results', '/results', 'See results'), ('prompts', '/prompts', 'Your prompts'), ('how', '/how-it-works', 'How it works')] %}
+        <li><a href="{{ href }}"{% if nav == key %} aria-current="page"{% endif %}>{{ label }}</a></li>
+        {% endfor %}
       </ul>
     </nav>
-    {% if settings.is_live %}
-    <span class="mode-pill mode-live">{{ icon('dot') }}Live mode: runs on Claude</span>
-    {% else %}
-    <span class="mode-pill mode-demo">{{ icon('dot') }}Demo mode: recorded runs, no API key</span>
     {% endif %}
   </div>
 </header>
@@ -39,7 +41,7 @@
   {% block content %}{% endblock %}
 </main>
 <footer class="site-footer">
-  <div class="wrap">Rollout Ready. Example data is fictional (Northstar Systems). <a href="/scoring">How scoring works</a></div>
+  <div class="wrap">{% block footer %}Rollout Ready. Example data is fictional (Northstar Systems). <a href="/how-it-works">How it works</a>{% endblock %}</div>
 </footer>
 <script src="/static/app.js" defer></script>
 </body>

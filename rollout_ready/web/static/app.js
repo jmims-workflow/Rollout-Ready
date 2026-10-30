@@ -7,10 +7,10 @@
     if (window.matchMedia("(max-width: 760px)").matches) el.removeAttribute("open");
   });
 
-  // Changing the suite on Compare or Test reloads with that suite's defaults.
+  // Changing the prompt on See results or Test a change reloads with that prompt's defaults.
   document.querySelectorAll("[data-autosubmit-suite]").forEach(function (sel) {
     sel.addEventListener("change", function () {
-      window.location.href = "/?suite=" + encodeURIComponent(sel.value);
+      window.location.href = "/results?suite=" + encodeURIComponent(sel.value);
     });
   });
   document.querySelectorAll("select[data-autosubmit]").forEach(function (sel) {
@@ -31,14 +31,28 @@
     btn.hidden = false;
     btn.addEventListener("click", function () {
       navigator.clipboard.writeText(source.textContent).then(function () {
-        if (status) status.textContent = "Copied. Paste it into Slack, email or a pull request.";
+        if (status) status.textContent = "Copied. Paste it into Slack or an email.";
       }, function () {
         if (status) status.textContent = "Could not copy. Use Download summary instead.";
       });
     });
   });
 
-  // Add a test case without a page reload.
+  // "I disagree with the AI reviewer": only ask how the example should count for "Something else".
+  document.querySelectorAll("form[data-disagree]").forEach(function (form) {
+    var box = form.querySelector("[data-count-as]");
+    if (!box) return;
+    var label = box.querySelector("label");
+    if (label) label.textContent = "How should this example count?";
+    var sync = function () {
+      var picked = form.querySelector("input[name=call]:checked");
+      box.hidden = !(picked && picked.value === "other");
+    };
+    form.querySelectorAll("input[name=call]").forEach(function (r) { r.addEventListener("change", sync); });
+    sync();
+  });
+
+  // Add an example without a page reload.
   document.querySelectorAll("form[data-add-case]").forEach(function (form) {
     form.addEventListener("submit", function (ev) {
       if (!window.fetch || !window.FormData) return;
@@ -54,6 +68,10 @@
             var strong = document.createElement("strong");
             strong.textContent = data["case"].name;
             li.appendChild(strong);
+            var tag = document.createElement("span");
+            tag.className = "tag tag-kind tag-" + data["case"].kind;
+            tag.textContent = data.kind_label;
+            li.appendChild(tag);
             if (data["case"].label) {
               var span = document.createElement("span");
               span.className = "muted";
@@ -62,10 +80,12 @@
             }
             list.appendChild(li);
           });
+          document.querySelectorAll("[data-case-count]").forEach(function (el) { el.textContent = data.count; });
+          if (!data.nudge) document.querySelectorAll("[data-nudge]").forEach(function (el) { el.hidden = true; });
           var est = document.querySelector("[data-estimate]");
           if (est && data.estimate) est.textContent = data.estimate;
           form.reset();
-          status.textContent = "Saved “" + data["case"].name + "”. It now has " + data.count + " test cases.";
+          status.textContent = "Saved “" + data["case"].name + "”. It now has " + data.count + " examples.";
         })
         .catch(function () { form.submit(); });
     });

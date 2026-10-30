@@ -1,0 +1,188 @@
+{
+  "version": "v2",
+  "model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "ran_at": "2026-10-06T16:30:00Z",
+  "cases": {
+    "insight-ops-standard": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Subject: Insight dashboards for ops teams, live November 19\n\nHi there,\n\nJoin us for a live webinar: See your operation at a glance: Insight dashboards for ops teams.\n\nThursday, November 19, 11:00 to 11:45 a.m. Eastern\nWith Maya Chen, Insight Product Lead, and Rob Ellis, Solutions Engineer\n\nInsight turns your FlowOS data into dashboards your whole team can use. Come see what it can do for your operation.\n\nRegister here: events.northstar.example/insight-nov19\n\nCan't make it live? Register anyway and we'll send you the recording.\n\nThe Northstar team",
+          "scores": {
+            "details": {
+              "score": 5,
+              "reason": "Title, date, time with time zone and both speakers match the brief exactly."
+            },
+            "value": {
+              "score": 3,
+              "reason": "Says Insight is useful but skips the two things the brief says attendees will learn."
+            },
+            "cta": {
+              "score": 4,
+              "reason": "One clear register line with the right link, and the subject line names the date."
+            },
+            "length": {
+              "score": 4,
+              "reason": "Quick to read, with one line of general praise that could go."
+            }
+          },
+          "input_tokens": 415,
+          "output_tokens": 132,
+          "judge_input_tokens": 846,
+          "judge_output_tokens": 201
+        }
+      ]
+    },
+    "two-sessions-two-zones": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Subject: Insight dashboards in practice, December 1\n\nHi there,\n\nYou're invited to Insight dashboards in practice, a live webinar with Maya Chen, Insight Product Lead.\n\nPick the session that suits you:\n- Tuesday, December 1, 9:00 to 9:45 a.m. GMT (Europe)\n- Tuesday, December 1, 1:00 to 1:45 p.m. Eastern (North America)\n\nMaya will walk through building a driver utilization view and setting your dashboards to refresh every 15 minutes.\n\nRegister for either session: events.northstar.example/insight-dec1\n\nThe Northstar team",
+          "scores": {
+            "details": {
+              "score": 4,
+              "reason": "Both sessions have the right day, time and time zone, but it never says they are the same content."
+            },
+            "value": {
+              "score": 4,
+              "reason": "Names both topics in plain words."
+            },
+            "cta": {
+              "score": 4,
+              "reason": "One link for both sessions, clearly labeled."
+            },
+            "length": {
+              "score": 3,
+              "reason": "Clear, but the session list and greeting make it longer than it needs to be."
+            }
+          },
+          "input_tokens": 422,
+          "output_tokens": 121,
+          "judge_input_tokens": 841,
+          "judge_output_tokens": 206
+        }
+      ]
+    },
+    "retail-speaker-change": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Subject: Fewer empty shifts, live November 25\n\nHi there,\n\nJoin us for Fewer empty shifts, a 30 minute webinar for retail operations leaders.\n\nWednesday, November 25, 12:00 to 12:30 p.m. Central\nWith Rob Ellis, Solutions Engineer, and Jordan Avery, Retail Solutions Lead\n\nHear how a 6 store outdoor retailer cut unfilled shifts by a third.\n\nRegister: events.northstar.example/retail-nov25\n\nThe Northstar team",
+          "scores": {
+            "details": {
+              "score": 4,
+              "reason": "Uses the updated speakers and the right date, time and time zone, but shortens the title."
+            },
+            "value": {
+              "score": 3,
+              "reason": "Gives the one-third result but little on what attendees will take away."
+            },
+            "cta": {
+              "score": 4,
+              "reason": "Clear register line with the right link."
+            },
+            "length": {
+              "score": 4,
+              "reason": "Short and easy to read."
+            }
+          },
+          "input_tokens": 429,
+          "output_tokens": 96,
+          "judge_input_tokens": 826,
+          "judge_output_tokens": 211
+        }
+      ]
+    },
+    "logistics-bare-brief": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Subject: On-time delivery dashboards, December 3\n\nHi there,\n\nJoin Rob Ellis for a 30 minute webinar on the Insight on-time delivery dashboard.\n\nThursday, December 3, 2:00 to 2:30 p.m. Eastern\n\nRegister: events.northstar.example/logistics-dec3\n\nThe Northstar team",
+          "scores": {
+            "details": {
+              "score": 4,
+              "reason": "Date, time, time zone and speaker are right, and it invents nothing the brief lacks."
+            },
+            "value": {
+              "score": 3,
+              "reason": "Names the dashboard but says nothing about what attendees will get from it."
+            },
+            "cta": {
+              "score": 4,
+              "reason": "Clear register line with the right link."
+            },
+            "length": {
+              "score": 5,
+              "reason": "Short and complete. The subject line says it all and there is nothing to cut."
+            }
+          },
+          "input_tokens": 436,
+          "output_tokens": 61,
+          "judge_input_tokens": 804,
+          "judge_output_tokens": 216
+        }
+      ]
+    },
+    "partner-cohost": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Subject: Multi-site retail scheduling and reporting, November 17\n\nHi there,\n\nGranite Peak Consulting and Northstar Systems invite you to Scheduling and reporting for multi-site retail.\n\nTuesday, November 17, 10:00 to 10:45 a.m. Central\nWith Leah Brooks, Principal at Granite Peak, and Maya Chen, Insight Product Lead at Northstar\n\nYou'll see how FlowOS schedules feed Insight dashboards, and how to build a weekly labor cost view.\n\nRegister: events.northstar.example/granite-nov17\n\nThe Granite Peak Consulting team",
+          "scores": {
+            "details": {
+              "score": 4,
+              "reason": "Every detail is right and it is signed from Granite Peak, though the title is easy to miss."
+            },
+            "value": {
+              "score": 4,
+              "reason": "Names both topics in plain words."
+            },
+            "cta": {
+              "score": 4,
+              "reason": "One register line with the right link."
+            },
+            "length": {
+              "score": 4,
+              "reason": "Short and easy to read."
+            }
+          },
+          "input_tokens": 443,
+          "output_tokens": 112,
+          "judge_input_tokens": 844,
+          "judge_output_tokens": 221
+        }
+      ]
+    },
+    "healthcare-date-moved": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Subject: Front desk staffing with Insight, December 10\n\nHi there,\n\nJoin Maya Chen, Insight Product Lead, for Front desk staffing at a glance with Insight.\n\nThursday, December 10, 12:00 to 12:45 p.m. Eastern\n\nMaya will show how clinic groups use Insight to see front desk staffing.\n\nRegister: events.northstar.example/health-dec10\n\nThe Northstar team",
+          "scores": {
+            "details": {
+              "score": 4,
+              "reason": "Uses the new date, December 10, with the right time and time zone, but doesn't flag that the date changed."
+            },
+            "value": {
+              "score": 3,
+              "reason": "Vague about what attendees will learn. It skips the no-show dashboard and the weekly report."
+            },
+            "cta": {
+              "score": 4,
+              "reason": "Clear register line with the right link."
+            },
+            "length": {
+              "score": 4,
+              "reason": "Short and easy to read."
+            }
+          },
+          "input_tokens": 450,
+          "output_tokens": 83,
+          "judge_input_tokens": 826,
+          "judge_output_tokens": 226
+        }
+      ]
+    }
+  }
+}

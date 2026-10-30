@@ -1,41 +1,90 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, pill, check_mark, notice %}
+{% from "_macros.html" import icon, pill, check_mark, notice, kind_tag, deal_badge %}
 {% block title %}{{ row.case.name }} | {% endblock %}
 {% block content %}
-<a class="back" href="/?suite={{ suite.id }}&amp;current={{ current_id }}&amp;new={{ new_id }}&amp;tab=cases#cases">Back to the comparison</a>
+<a class="back" href="{{ results_url(suite.id, current_id, new_id, tab='examples') }}#examples">Back to the results</a>
 <h1>{{ row.case.name }}</h1>
 <div class="case-head">
+  {{ kind_tag(row.case) }}
   {% if row.case.label %}<span class="muted">{{ row.case.label }}</span>{% endif %}
   {{ pill(row.result) }}
-  <span class="score">{{ current_id }} {{ fmt(row.current_score) }} to {{ new_id }} {{ fmt(row.new_score) }} ({{ fmt_change(row.change) }})</span>
+  <span class="score">Version {{ comp.current.number }} {{ fmt(row.current_score) }} to version {{ comp.new.number }} {{ fmt(row.new_score) }} ({{ fmt_change(row.change) }})</span>
 </div>
+{% for c in row.blocking_misses %}<p class="ec-deal">Missed a deal-breaker: {{ c.name }}</p>{% endfor %}
 <p>{{ row.headline }}</p>
 
+<section class="card your-call" id="your-call" aria-labelledby="call-h">
+  <h2 id="call-h">Your call</h2>
+  {% if message %}<p class="saved-msg" role="status">{{ message }}</p>{% endif %}
+  {% if row.override %}
+  <p>{{ icon('person') }} You overrode the AI reviewer: it said <strong>{{ result_labels[row.ai_result] }}</strong>, and this example now counts as <strong>{{ row.result_label }}</strong> for {{ vname(new_id) }} compared with {{ vname(current_id) }}.</p>
+  <p>Your reason: {{ row.override.reason }}</p>
+  <form method="post" action="/prompts/{{ suite.id }}/examples/{{ row.case.id }}/override/remove">
+    <input type="hidden" name="current" value="{{ current_id }}">
+    <input type="hidden" name="new" value="{{ new_id }}">
+    <button class="btn btn-secondary" type="submit">Remove my override</button>
+  </form>
+  {% else %}
+  <p class="muted">The AI reviewer says this example {{ {'worse': 'got worse', 'better': 'got better', 'same': 'stayed about the same'}[row.ai_result] }}. If you read both outputs and see it differently, your call counts instead, for these two versions only. The AI reviewer's scores stay as they are.</p>
+  <details class="disagree"{% if form_error %} open{% endif %}>
+    <summary class="btn btn-secondary">I disagree with the AI reviewer</summary>
+    <form method="post" action="/prompts/{{ suite.id }}/examples/{{ row.case.id }}/override" class="disagree-form" data-disagree>
+      <input type="hidden" name="current" value="{{ current_id }}">
+      <input type="hidden" name="new" value="{{ new_id }}">
+      {% if form_error %}{{ notice(form_error, "error") }}{% endif %}
+      {% set f = form or {} %}
+      {% set options = (['not_worse'] if row.ai_result == 'worse' else ['not_better'] if row.ai_result == 'better' else []) + ['other'] %}
+      <fieldset>
+        <legend>What's your call?</legend>
+        {% for key in options %}
+        <div class="radio-row">
+          <input type="radio" id="call-{{ key }}" name="call" value="{{ key }}" required{% if f.call == key or (not f.call and loop.first) %} checked{% endif %}>
+          <label for="call-{{ key }}">{{ calls[key] }}{% if key != 'other' %}<span class="hint">It will count as About the same.</span>{% endif %}</label>
+        </div>
+        {% endfor %}
+      </fieldset>
+      <div class="field count-as" data-count-as>
+        <label for="count-as">If something else, how should this example count?</label>
+        <select id="count-as" name="count_as">
+          {% for key, label in result_labels.items() if key != row.ai_result %}<option value="{{ key }}"{% if f.count_as == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="reason">Why? <span class="hint">One line, so you and your team know why you made this call. Required.</span></label>
+        <input type="text" id="reason" name="reason" required maxlength="200" value="{{ f.reason }}">
+      </div>
+      {% if not settings.is_live %}<p class="muted small">In this demo, your call lasts until you close your browser. Nothing is saved on the server.</p>{% endif %}
+      <button class="btn" type="submit">Save my call</button>
+    </form>
+  </details>
+  {% endif %}
+</section>
+
 <section class="card" aria-labelledby="input-h">
-  <h2 id="input-h">The test input</h2>
+  <h2 id="input-h">The example</h2>
   <p class="muted small">{{ suite.input_label }}</p>
   <pre class="input-text">{{ row.case.input }}</pre>
 </section>
 
 <h2>The two outputs</h2>
 <div class="two-col">
-  {% for vid, text, score, words in [(current_id, row.current_output, row.current_score, row.current_words), (new_id, row.new_output, row.new_score, row.new_words)] %}
-  <section class="panel" aria-label="Output from {{ vid }}">
-    <h3>{{ 'Current version' if loop.first else 'New version' }} ({{ vid }})</h3>
+  {% for v, text, score, words, who in [(comp.current, row.current_output, row.current_score, row.current_words, "The version your team uses now"), (comp.new, row.new_output, row.new_score, row.new_words, "The version you're trying")] %}
+  <section class="panel" aria-label="Output from {{ vname(v.id) }}">
+    <h3>{{ who }} ({{ vname(v.id) }})</h3>
     <div class="panel-meta"><span>Score <span class="score">{{ fmt(score) }}</span></span><span>{{ words }} words</span></div>
     <pre class="output">{{ text }}</pre>
   </section>
   {% endfor %}
 </div>
 
-<h2 style="margin-top:1.5rem">Scores</h2>
+<h2 class="section-gap">Scores</h2>
 <div class="table-card table-scroll">
 <table>
-  <thead><tr><th scope="col">Criterion</th><th scope="col" class="num">{{ current_id }}</th><th scope="col" class="num">{{ new_id }}</th><th scope="col">Judge's reason for the {{ new_id }} score</th></tr></thead>
+  <thead><tr><th scope="col">Quality</th><th scope="col" class="num">Version {{ comp.current.number }}</th><th scope="col" class="num">Version {{ comp.new.number }}</th><th scope="col">The AI reviewer's reason for the version {{ comp.new.number }} score</th></tr></thead>
   <tbody>
   {% for c in row.criteria %}
   <tr>
-    <th scope="row">{{ c.criterion.name }}</th>
+    <th scope="row">{{ c.criterion.name }}{% if c.criterion.deal_breaker %} {{ deal_badge() }}{% endif %}</th>
     <td class="num score">{{ fmt_crit(c.current) }}</td>
     <td class="num score {{ 'change-neg' if c.new < c.current else 'change-pos' if c.new > c.current }}">{{ fmt_crit(c.new) }}</td>
     <td>{{ c.new_reason }}</td>
@@ -44,13 +93,13 @@
   </tbody>
 </table>
 </div>
-<p class="muted small">The judge scores each output on its own. It never sees which version wrote it, or the other version's output.</p>
+<p class="muted small">The AI reviewer scores each output on its own. It never sees which version wrote it, or the other version's output.</p>
 
-<h2 style="margin-top:1.5rem">Automatic checks</h2>
+<h2 class="section-gap">Quick checks</h2>
 {% if row.checks %}
 <div class="table-card table-scroll">
 <table>
-  <thead><tr><th scope="col">Check</th><th scope="col">{{ current_id }}</th><th scope="col">{{ new_id }}</th></tr></thead>
+  <thead><tr><th scope="col">Check</th><th scope="col">Version {{ comp.current.number }}</th><th scope="col">Version {{ comp.new.number }}</th></tr></thead>
   <tbody>
   {% for c in row.checks %}
   <tr>
@@ -62,5 +111,5 @@
   </tbody>
 </table>
 </div>
-{% else %}<p class="muted">This suite has no automatic checks.</p>{% endif %}
+{% else %}<p class="muted">This prompt has no quick checks.</p>{% endif %}
 {% endblock %}

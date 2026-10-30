@@ -5,6 +5,7 @@ suites/<suite-id>/
   versions/v1.md ...          front matter (note, created) then the prompt text
   recorded/<version>.json     demo outputs and judge scores
   runs/<version>.json         live results
+  runs/overrides.json         live overrides, keyed "<current>:<new>" then case id
 """
 
 from __future__ import annotations
@@ -20,7 +21,7 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
-from .models import Case, Suite, Version, VersionResults
+from .models import Case, Override, Suite, Version, VersionResults
 
 VERSION_RE = re.compile(r"^v(\d+)\.md$")
 
@@ -72,10 +73,10 @@ class Store:
 
     def suite_dir(self, suite_id: str) -> Path:
         if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", suite_id or ""):
-            raise SuiteError(f"There is no prompt suite called {suite_id!r}.")
+            raise SuiteError(f"There is no prompt called {suite_id!r}.")
         path = self.root / suite_id
         if not (path / "suite.yaml").exists():
-            raise SuiteError(f"There is no prompt suite called {suite_id!r}.")
+            raise SuiteError(f"There is no prompt called {suite_id!r}.")
         return path
 
     def load_suite(self, suite_id: str) -> Suite:
@@ -109,17 +110,17 @@ class Store:
         path = self.suite_dir(suite_id) / "cases.yaml"
         data = _read_yaml(path) or []
         if not isinstance(data, list):
-            raise SuiteError(f"{path} should be a list of test cases.")
+            raise SuiteError(f"{path} should be a list of examples.")
         cases = []
         for i, item in enumerate(data, start=1):
             try:
                 cases.append(Case.model_validate(item))
             except ValidationError as err:
-                raise SuiteError(f"{path}, test case {i}: " + str(_friendly(path, err)).split("problem. ", 1)[1]) from err
+                raise SuiteError(f"{path}, example {i}: " + str(_friendly(path, err)).split("problem. ", 1)[1]) from err
         ids = [c.id for c in cases]
         dupes = sorted({i for i in ids if ids.count(i) > 1})
         if dupes:
-            raise SuiteError(f"{path}: each test case needs its own id; repeated: {', '.join(dupes)}")
+            raise SuiteError(f"{path}: each example needs its own id; repeated: {', '.join(dupes)}")
         return cases
 
     def save_cases(self, suite_id: str, cases: list[Case]) -> None:
@@ -127,25 +128,26 @@ class Store:
         data = [c.model_dump() for c in cases]
         _atomic_write(path, yaml.safe_dump(data, sort_keys=False, allow_unicode=False, width=100))
 
-    def add_case(self, suite_id: str, name: str, label: str, input_text: str) -> Case:
+    def add_case(self, suite_id: str, name: str, label: str, input_text: str, kind: str = "everyday") -> Case:
         cases = self.load_cases(suite_id)
         taken = {c.id for c in cases}
         base = slugify(f"{label} {name}" if label else name)
         case_id, n = base, 2
         while case_id in taken:
             case_id, n = f"{base}-{n}", n + 1
-        case = Case(id=case_id, name=name.strip(), label=label.strip(), input=input_text.strip())
+        case = Case(id=case_id, name=name.strip(), label=label.strip(), kind=kind, input=input_text.strip())
         self.save_cases(suite_id, [*cases, case])
         return case
 
-    def update_case(self, suite_id: str, case_id: str, name: str, label: str, input_text: str) -> Case:
+    def update_case(self, suite_id: str, case_id: str, name: str, label: str, input_text: str,
+                    kind: str = "everyday") -> Case:
         cases = self.load_cases(suite_id)
         for i, c in enumerate(cases):
             if c.id == case_id:
-                cases[i] = Case(id=case_id, name=name.strip(), label=label.strip(), input=input_text.strip())
+                cases[i] = Case(id=case_id, name=name.strip(), label=label.strip(), kind=kind, input=input_text.strip())
                 self.save_cases(suite_id, cases)
                 return cases[i]
-        raise SuiteError(f"There is no test case called {case_id!r} in this suite.")
+        raise SuiteError(f"There is no example called {case_id!r} in this prompt.")
 
     # versions ---------------------------------------------------------
     def version_numbers(self, suite_id: str) -> list[int]:
@@ -159,7 +161,7 @@ class Store:
         m = re.fullmatch(r"v(\d+)", version_id or "")
         path = self.suite_dir(suite_id) / "versions" / f"{version_id}.md"
         if not m or not path.exists():
-            raise SuiteError(f"This suite has no version called {version_id!r}.")
+            raise SuiteError(f"This prompt has no version called {version_id!r}.")
         raw = path.read_text(encoding="utf-8")
         meta: dict = {}
         body = raw
@@ -224,9 +226,44 @@ class Store:
         path = self._results_path(suite_id, "runs", results.version)
         _atomic_write(path, results.model_dump_json(indent=2, exclude={"source"}) + "\n")
 
+    # overrides (live mode) --------------------------------------------
+    def _overrides_path(self, suite_id: str) -> Path:
+        return self.suite_dir(suite_id) / "runs" / "overrides.json"
+
+    def _all_overrides(self, suite_id: str) -> dict:
+        path = self._overrides_path(suite_id)
+        if not path.exists():
+            return {}
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise SuiteError(f"{path} could not be read: {exc}") from exc
+
+    def load_overrides(self, suite_id: str, current: str, new: str) -> dict[str, Override]:
+        pair = self._all_overrides(suite_id).get(pair_key(current, new), {})
+        return {cid: Override.model_validate(o) for cid, o in pair.items()}
+
+    def save_override(self, suite_id: str, current: str, new: str, case_id: str, override: Override) -> None:
+        data = self._all_overrides(suite_id)
+        data.setdefault(pair_key(current, new), {})[case_id] = override.model_dump()
+        _atomic_write(self._overrides_path(suite_id), json.dumps(data, indent=2) + "\n")
+
+    def remove_override(self, suite_id: str, current: str, new: str, case_id: str) -> None:
+        data = self._all_overrides(suite_id)
+        pair = data.get(pair_key(current, new), {})
+        if pair.pop(case_id, None) is not None:
+            if not pair:
+                data.pop(pair_key(current, new))
+            _atomic_write(self._overrides_path(suite_id), json.dumps(data, indent=2) + "\n")
+
+
+def pair_key(current: str, new: str) -> str:
+    return f"{current}:{new}"
+
 
 def rubric_hash(suite: Suite) -> str:
-    payload = json.dumps([c.model_dump() for c in suite.rubric], sort_keys=True)
+    # Marking a deal-breaker changes no score, so it does not make saved results stale.
+    payload = json.dumps([c.model_dump(exclude={"deal_breaker"}) for c in suite.rubric], sort_keys=True)
     return hashlib.sha256(payload.encode()).hexdigest()[:12]
 
 

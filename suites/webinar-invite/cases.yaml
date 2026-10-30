@@ -1,0 +1,36 @@
+- id: insight-ops-standard
+  name: Standard invite, one session
+  label: Customers in North America
+  kind: everyday
+  input: |
+    Event brief. Title: See your operation at a glance: Insight dashboards for ops teams. Date: Thursday, November 19. Time: 11:00 to 11:45 a.m. Eastern. Speakers: Maya Chen (Insight Product Lead) and Rob Ellis (Solutions Engineer). Audience: FlowOS customers in North America who don't use Insight yet. What they'll learn: how to set up an on-time delivery dashboard in 10 minutes, and how to share it with site managers. Registration link: events.northstar.example/insight-nov19. Everyone who registers gets the recording.
+- id: two-sessions-two-zones
+  name: Two sessions in two time zones
+  label: Customers in Europe and North America
+  kind: complicated
+  input: |
+    Event brief. Title: Insight dashboards in practice. Two live sessions, same content. Session 1: Tuesday, December 1, 9:00 to 9:45 a.m. GMT (for Europe). Session 2: Tuesday, December 1, 1:00 to 1:45 p.m. Eastern (for North America). Speaker at both: Maya Chen (Insight Product Lead). Audience: current Insight customers. Topics: building a driver utilization view, and setting dashboards to refresh every 15 minutes. One registration link for both, readers pick a session on the form: events.northstar.example/insight-dec1.
+- id: retail-speaker-change
+  name: Brief with a late speaker change
+  label: Prospects in retail
+  kind: messy
+  input: |
+    Event brief (updated). Title: Fewer empty shifts: what store managers see in Insight. Wednesday, November 25, 12:00 to 12:30 p.m. Central. Speakers: Rob Ellis (Solutions Engineer) and Dana Whitfield (Customer Marketing). UPDATE Nov 2: Dana can't make it. Jordan Avery (Retail Solutions Lead) replaces her. Audience: retail operations leaders who don't use Northstar yet. Hook we're allowed to use: a 6 store outdoor retailer cut unfilled shifts by a third (no customer name). Link: events.northstar.example/retail-nov25.
+- id: logistics-bare-brief
+  name: Brief with only the basics
+  label: Prospects in logistics
+  kind: messy
+  input: |
+    Brief, basics only, more to come. Insight webinar for logistics prospects. Thursday, December 3, 2:00 to 2:30 p.m. Eastern. Speaker: Rob Ellis. Topic: the on-time delivery dashboard. Link: events.northstar.example/logistics-dec3. That's all we have so far, don't invent anything.
+- id: partner-cohost
+  name: Co-hosted with a partner
+  label: Granite Peak Consulting clients
+  kind: complicated
+  input: |
+    Co-hosted webinar brief. Title: Scheduling and reporting for multi-site retail. Hosts: Northstar Systems and Granite Peak Consulting. Tuesday, November 17, 10:00 to 10:45 a.m. Central. Speakers: Leah Brooks (Principal, Granite Peak) and Maya Chen (Insight Product Lead, Northstar). Audience: Granite Peak's retail clients. Sign it from Granite Peak, not from Northstar. Topics: how FlowOS schedules feed Insight dashboards, and a weekly labor cost view. Link: events.northstar.example/granite-nov17.
+- id: healthcare-date-moved
+  name: Date moved, and last year's invite got it wrong
+  label: Customers in healthcare
+  kind: broke_before
+  input: |
+    Event brief. Title: Front desk staffing at a glance with Insight. Date: MOVED to Thursday, December 10 (was December 8). Time: 12:00 to 12:45 p.m. Eastern. Speaker: Maya Chen (Insight Product Lead). Audience: clinic groups on FlowOS. Last year's healthcare invite went out with the old date, so double-check it. Topics: a no-show dashboard and a weekly staffing report. Link: events.northstar.example/health-dec10.

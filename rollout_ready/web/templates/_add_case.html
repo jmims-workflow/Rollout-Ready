@@ -1,6 +1,7 @@
-{# Add a test case. Needs: suite, next_url. Works without JavaScript; app.js adds it without a reload. #}
+{# Add an example. Needs: suite, next_url. Works without JavaScript; app.js adds it without a reload. #}
+{% from "_macros.html" import kind_field %}
 {% if settings.is_live %}
-<form method="post" action="/suites/{{ suite.id }}/cases" data-add-case>
+<form method="post" action="/prompts/{{ suite.id }}/examples" data-add-case>
   <input type="hidden" name="next" value="{{ next_url }}">
   <div class="slot-grid">
     <div class="field">
@@ -12,13 +13,14 @@
       <input type="text" id="ac-label" name="label" maxlength="120">
     </div>
   </div>
+  {{ kind_field("ac-kind", "kind", "everyday") }}
   <div class="field">
-    <label for="ac-input">Input <span class="hint">Exactly what someone would paste in. No ideal answer needed. Change names and details first.</span></label>
+    <label for="ac-input">The input <span class="hint">Exactly what someone would paste in. No ideal answer needed. Change names and details first.</span></label>
     <textarea id="ac-input" name="input" required></textarea>
   </div>
-  <button class="btn btn-secondary" type="submit">Save test case</button>
+  <button class="btn btn-secondary" type="submit">Save example</button>
   <span class="small" role="status" aria-live="polite" data-add-status></span>
 </form>
 {% else %}
-<p class="muted">Demo mode is read-only, so new test cases can't be saved here. In live mode this saves the case to the suite straight away.</p>
+<p class="muted">The demo is read-only, so new examples can't be saved here. In live mode this saves the example to the prompt straight away, and asks what kind of example it is: everyday, messy or incomplete, complicated, or one that broke before.</p>
 {% endif %}

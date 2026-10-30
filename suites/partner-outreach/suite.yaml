@@ -1,0 +1,34 @@
+name: Partner outreach first message
+description: Turns a partnerships rep's notes into a first message to a possible reseller or integration partner.
+team: Partnerships
+who_uses_it: Partnerships reps, before first contact with a possible reseller or integration partner.
+input_label: What a partnerships rep would paste in
+in_use: v1
+model: claude-sonnet-5-5
+repeats: 1
+threshold: 0.5
+rubric:
+  - id: accurate
+    name: Accurate to the notes
+    five_looks_like: Every company, person, number and product claim matches the notes or the partner facts.
+    one_looks_like: Gets a name or fact wrong, or promises a partner term nobody agreed.
+    deal_breaker: true
+  - id: why
+    name: Says why this partner
+    five_looks_like: Opens with one specific reason this company and Northstar fit, taken from the notes.
+    one_looks_like: Could be sent to any company. No reason this partner, or a list of every product.
+  - id: ask
+    name: One small, clear ask
+    five_looks_like: Ends with one easy ask, like a 20 minute call, with a suggested day.
+    one_looks_like: No ask, a vague "let me know", or a big ask like signing an agreement.
+  - id: tone
+    name: Sounds like a person
+    five_looks_like: Warm, plain and brief, like a rep writing to one person they want to work with.
+    one_looks_like: Reads like a mass email or a brochure, full of buzzwords.
+checks:
+  - type: max_words
+    value: 140
+    label: Under 140 words
+  - type: must_not_contain
+    value: ["\u2014", synergy, circle back]
+    label: No em dashes or buzzwords

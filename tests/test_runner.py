@@ -36,31 +36,31 @@ def test_a_new_case_runs_only_that_case(suites_copy):
 
 def test_editing_an_input_reruns_it(suites_copy):
     store = Store(suites_copy)
-    v = store.add_version("ticket-summary", "Prompt", "Note")
-    run_version(store, "ticket-summary", v.id, FakeProvider(), "j")
-    store.update_case("ticket-summary", "bayside-duplicate-push", "Duplicate push notifications", "Bayside Movers", "Changed thread")
-    suite = store.load_suite("ticket-summary")
-    cases = store.load_cases("ticket-summary")
-    assert [c.id for c in missing_cases(store, suite, cases, v.id, live=True)] == ["bayside-duplicate-push"]
+    v = store.add_version("partner-outreach", "Prompt", "Note")
+    run_version(store, "partner-outreach", v.id, FakeProvider(), "j")
+    store.update_case("partner-outreach", "harlow-cold", "Cold outreach", "Harlow Analytics", "Changed notes")
+    suite = store.load_suite("partner-outreach")
+    cases = store.load_cases("partner-outreach")
+    assert [c.id for c in missing_cases(store, suite, cases, v.id, live=True)] == ["harlow-cold"]
 
 
 def test_failed_call_keeps_results_already_saved(suites_copy):
     store = Store(suites_copy)
-    v = store.add_version("ticket-summary", "Prompt", "Note")
+    v = store.add_version("partner-outreach", "Prompt", "Note")
     with pytest.raises(ProviderError):
-        run_version(store, "ticket-summary", v.id, FakeProvider(fail_after=5), "j")
-    saved = store.load_runs("ticket-summary", v.id)
+        run_version(store, "partner-outreach", v.id, FakeProvider(fail_after=5), "j")
+    saved = store.load_runs("partner-outreach", v.id)
     assert len(saved.cases) == 2
     retry = FakeProvider()
-    run_version(store, "ticket-summary", v.id, retry, "j")
-    assert retry.generate_calls == 4
+    run_version(store, "partner-outreach", v.id, retry, "j")
+    assert retry.generate_calls == 4  # 6 examples, 2 saved before the failure
 
 
 def test_live_results_flow_into_the_same_comparison(suites_copy):
     store = Store(suites_copy)
-    v = store.add_version("ticket-summary", "Prompt", "Note")
-    run_version(store, "ticket-summary", v.id, FakeProvider(score=5), "j")
-    comp = build_comparison(store, "ticket-summary", "v2", v.id, live=True)
+    v = store.add_version("partner-outreach", "Prompt", "Note")
+    run_version(store, "partner-outreach", v.id, FakeProvider(score=5), "j")
+    comp = build_comparison(store, "partner-outreach", "v1", v.id, live=True)
     assert comp.complete and comp.verdict == "Ready to roll out"
     assert comp.new_info.input_tokens > 0
 

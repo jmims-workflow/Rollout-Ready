@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, verdict_icon %}
+{% block content %}
+<h1 class="home-title">What would you like to do?</h1>
+<p class="lede">Rollout Ready runs a prompt change on real examples, so you find out what it broke before your team does.</p>
+
+{% if latest %}
+<a class="latest verdict-{{ latest.verdict_key }}" href="{{ results_url(latest.suite.id, latest.current.id, latest.new.id) }}">
+  {{ verdict_icon(latest.verdict_key) }}
+  <span class="latest-text">{{ banner }}</span>
+  <span class="latest-link">See why</span>
+</a>
+{% endif %}
+
+<ul class="home-cards">
+  {% for href, ico, title, desc, meta in [
+      ('/test', 'pencil', 'Test a change', 'Paste an edited prompt and see how it does on your saved examples.', 'Start here'),
+      ('/results', 'bars', 'See results', 'Compare any two versions of a prompt and see what got better or worse.', saved_meta),
+      ('/prompts', 'stack', 'Your prompts', 'The prompts your team relies on, their examples, and what good looks like.', prompts_meta),
+      ('/how-it-works', 'book', 'How it works', 'How the AI reviewer scores, and why one broken example matters more than the average.', '2 minute read'),
+  ] %}
+  <li>
+    <a class="home-card" href="{{ href }}">
+      <span class="home-tile">{{ icon(ico) }}</span>
+      <span class="home-card-title">{{ title }}</span>
+      <span class="home-card-desc">{{ desc }}</span>
+      <span class="home-card-meta">{{ meta }}</span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% endblock %}
+{% block footer %}{% if not settings.is_live %}This demo uses sample results for a fictional company, Northstar Systems. Nothing you type here is saved.{% else %}Rollout Ready. <a href="/how-it-works">How it works</a>{% endif %}{% endblock %}

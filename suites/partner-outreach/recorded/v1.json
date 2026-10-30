@@ -1,0 +1,188 @@
+{
+  "version": "v1",
+  "model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "ran_at": "2026-09-30T15:20:00Z",
+  "cases": {
+    "cobalt-reseller": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Nina,\n\nIt was great to meet you at the Midwest Retail Ops Summit. As promised, here is a little more about Northstar.\n\nNorthstar makes FlowOS for shift scheduling, Connect for team messaging and Insight for dashboards. Partners who resell our products earn a 20 percent margin on first-year subscriptions.\n\nIf this sounds interesting, let me know and we can find a time to talk.\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "The summit, Nina's name and the 20 percent margin all match the notes and partner facts."
+            },
+            "why": {
+              "score": 3,
+              "reason": "Mentions the summit but not the real fit: clients asking for scheduling their current tool can't do on a phone."
+            },
+            "ask": {
+              "score": 3,
+              "reason": "Asks to talk, but leaves Nina to suggest a time and a format."
+            },
+            "tone": {
+              "score": 4,
+              "reason": "Friendly and plain, if a little general."
+            }
+          },
+          "input_tokens": 413,
+          "output_tokens": 107,
+          "judge_input_tokens": 828,
+          "judge_output_tokens": 199
+        }
+      ]
+    },
+    "tidewater-two-contacts": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Ben,\n\nThank you for getting back to us on LinkedIn. I wanted to share a bit more about Northstar Systems and why we think a partnership could make sense.\n\nNorthstar makes three products. FlowOS handles shift scheduling for hourly teams and has an open scheduling API. Connect is our team messaging product, and it has had an open messaging API since June 2026. Insight turns scheduling data into dashboards, and it can also be resold on its own. Our resellers earn a 20 percent margin on first-year subscriptions.\n\nWe work with many kinds of partners, from resellers to software companies that build integrations, and we would love to explore what working together could look like for Tidewater Payroll and your customers. I am also happy to include Grace Kim from your sales team.\n\nPlease let me know if you would be open to a conversation in the coming weeks.\n\nBest regards,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Every product fact is right, and both contacts are named correctly."
+            },
+            "why": {
+              "score": 2,
+              "reason": "Lists all three products but never names the real fit: approved FlowOS shifts flowing into Tidewater's payroll."
+            },
+            "ask": {
+              "score": 3,
+              "reason": "Asks for a conversation in the coming weeks, with no length and no day."
+            },
+            "tone": {
+              "score": 3,
+              "reason": "Polite, but reads like a brochure rather than a note to Ben."
+            }
+          },
+          "input_tokens": 420,
+          "output_tokens": 227,
+          "judge_input_tokens": 917,
+          "judge_output_tokens": 204
+        }
+      ]
+    },
+    "pinecrest-booth-notes": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Mark,\n\nGreat chatting at our booth. It sounds like Pinecrest's 25 dental and vet clinics are dealing with front desk staff texting patients from personal phones. Connect has an open messaging API, so it could help.\n\nWould you be open to a call to talk about how we could work together?\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 3,
+              "reason": "Calls them Pinecrest's own clinics when Pinecrest only runs their IT, and picks 'Mark' though the notes aren't sure of the name."
+            },
+            "why": {
+              "score": 3,
+              "reason": "Picks up the texting problem, but skips his question about clinic tablets."
+            },
+            "ask": {
+              "score": 3,
+              "reason": "Asks for a call with no length, no day and no clear purpose."
+            },
+            "tone": {
+              "score": 4,
+              "reason": "Short and friendly, and it sounds like the booth chat really happened."
+            }
+          },
+          "input_tokens": 427,
+          "output_tokens": 89,
+          "judge_input_tokens": 821,
+          "judge_output_tokens": 209
+        }
+      ]
+    },
+    "harlow-cold": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Tess,\n\nI came across Harlow Analytics and your September post on how hard it is to get operations data out of scheduling tools. That is a problem we hear a lot at Northstar.\n\nInsight, our dashboard product, can be resold on its own, and resellers earn a 20 percent margin on first-year subscriptions. I'd love to hear whether it could be a fit for your logistics and freight clients.\n\nLet me know if you'd like to chat.\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "The blog post, Tess's name and the Insight resale terms all match."
+            },
+            "why": {
+              "score": 3,
+              "reason": "Mentions the blog post, but doesn't connect Insight to the problem it describes."
+            },
+            "ask": {
+              "score": 3,
+              "reason": "\"Let me know if you'd like to chat\" leaves all the work to Tess."
+            },
+            "tone": {
+              "score": 4,
+              "reason": "Warm and plain for a cold message."
+            }
+          },
+          "input_tokens": 434,
+          "output_tokens": 125,
+          "judge_input_tokens": 850,
+          "judge_output_tokens": 214
+        }
+      ]
+    },
+    "summit-said-no": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Jorge,\n\nIt has been a while since we last spoke in March 2025. At the time, Connect did not have an API, which was a fair reason to pass.\n\nGood news: Connect has had an open messaging API since June 2026. There is real synergy between Summit Field Software and Northstar, and I think field service teams would get a lot out of it.\n\nWould you be open to reconnecting?\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Gets the March 2025 call and the June 2026 API right, and doesn't pretend they spoke recently."
+            },
+            "why": {
+              "score": 4,
+              "reason": "Names the exact reason he passed and that it has been fixed."
+            },
+            "ask": {
+              "score": 3,
+              "reason": "\"Reconnecting\" is vague: no call length and no day."
+            },
+            "tone": {
+              "score": 3,
+              "reason": "\"Real synergy\" reads like a sales template."
+            }
+          },
+          "input_tokens": 441,
+          "output_tokens": 115,
+          "judge_input_tokens": 846,
+          "judge_output_tokens": 219
+        }
+      ]
+    },
+    "brightline-competitor": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Owen,\n\nOur CEO enjoyed meeting you at dinner and mentioned that Brightline's clients are asking for better reporting.\n\nInsight, our dashboard product, can be resold on its own, alongside the tools your clients already use. Resellers earn a 20 percent margin on first-year subscriptions.\n\nWould you be open to a conversation about adding Insight to what Brightline offers?\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Right on the dinner, the reporting ask and Insight being sold on its own, and it doesn't pitch FlowOS."
+            },
+            "why": {
+              "score": 4,
+              "reason": "Leads with the reporting gap Owen named."
+            },
+            "ask": {
+              "score": 3,
+              "reason": "Asks for a conversation, but with no length or day."
+            },
+            "tone": {
+              "score": 4,
+              "reason": "Plain and respectful of the existing ShiftBay relationship."
+            }
+          },
+          "input_tokens": 448,
+          "output_tokens": 98,
+          "judge_input_tokens": 837,
+          "judge_output_tokens": 224
+        }
+      ]
+    }
+  }
+}

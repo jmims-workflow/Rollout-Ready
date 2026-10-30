@@ -1,30 +1,34 @@
 {% extends "base.html" %}
-{% from "_macros.html" import notice %}
-{% block title %}Set up a new suite | {% endblock %}
+{% from "_macros.html" import notice, kind_field %}
+{% block title %}Add a new prompt | {% endblock %}
 {% block content %}
-<a class="back" href="/suites">All suites</a>
-<h1 class="page-title">Set up a new suite</h1>
-<p class="lede">Five short steps. When you save, the prompt you use today becomes version 1 and is scored once to set the baseline.</p>
+<a class="back" href="/prompts">Your prompts</a>
+<h1 class="page-title">Add a new prompt</h1>
+<p class="lede">Five short steps. When you save, the prompt your team uses today becomes version 1 and is scored once, so every version you try has something to be compared with.</p>
 {% if not settings.is_live %}
-{{ notice("Demo mode: you can fill this in and try “Draft criteria for me”, but saving is turned off because the public demo can't call Claude.", "info") }}
+{{ notice("Demo: you can fill this in and try “Suggest qualities for me”, but saving is turned off because the demo can't call Claude.", "info") }}
 {% endif %}
 {% if message %}{{ notice(message, "info") }}{% endif %}
 {% if errors %}
 <div class="notice error" role="alert"><div><p><strong>Please fix {{ 'this' if errors|length == 1 else 'these' }} first:</strong></p><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div></div>
 {% endif %}
 
-<form method="post" action="/suites/new" id="new-suite">
+<form method="post" action="/prompts/new" id="new-prompt">
   <section class="card step" aria-labelledby="st1">
     <h2 id="st1"><span class="step-num" aria-hidden="true">1</span>Name it</h2>
     <div class="slot-grid">
       <div class="field">
-        <label for="ns-name">Suite name <span class="hint">For example, "Renewal risk summary".</span></label>
+        <label for="ns-name">Prompt name <span class="hint">For example, "Renewal risk summary".</span></label>
         <input type="text" id="ns-name" name="name" value="{{ f.name }}" maxlength="120">
       </div>
       <div class="field">
-        <label for="ns-who">Who uses the output, and for what?</label>
-        <input type="text" id="ns-who" name="who_uses_it" value="{{ f.who_uses_it }}" maxlength="200">
+        <label for="ns-team">Team <span class="hint">Optional. For example, Sales, Marketing or Partnerships.</span></label>
+        <input type="text" id="ns-team" name="team" value="{{ f.team }}" maxlength="60">
       </div>
+    </div>
+    <div class="field">
+      <label for="ns-who">Who uses the output, and for what?</label>
+      <input type="text" id="ns-who" name="who_uses_it" value="{{ f.who_uses_it }}" maxlength="200">
     </div>
   </section>
 
@@ -37,18 +41,19 @@
   </section>
 
   <section class="card step" aria-labelledby="st3">
-    <h2 id="st3"><span class="step-num" aria-hidden="true">3</span>Add test inputs</h2>
-    <p>Start with 3 and aim for 6 to 8. Pick hard ones: the messy, unusual or tricky inputs where a small change could break things. You don't write ideal answers, only inputs.</p>
+    <h2 id="st3"><span class="step-num" aria-hidden="true">3</span>Add examples</h2>
+    <p>Start with 3 and aim for 6 to 8. Mix everyday inputs with messy and complicated ones, because that is where a small change usually breaks things. You only add inputs, never ideal answers.</p>
     <p class="tip">Change names and details in any real input before you paste it.</p>
     {% for i in range(1, 9) %}
-    {% if i == 4 %}<details class="inline"{% if f['case_input_4'] or f['case_name_4'] %} open{% endif %}><summary>Add more test inputs (up to 8)</summary>{% endif %}
+    {% if i == 4 %}<details class="inline"{% if f['case_input_4'] or f['case_name_4'] %} open{% endif %}><summary>Add more examples (up to 8)</summary>{% endif %}
     <fieldset class="slot">
-      <legend>Test input {{ i }}{% if i > 3 %} (optional){% endif %}</legend>
+      <legend>Example {{ i }}{% if i > 3 %} (optional){% endif %}</legend>
       <div class="slot-grid">
         <div class="field"><label for="cn{{ i }}">Name</label><input type="text" id="cn{{ i }}" name="case_name_{{ i }}" value="{{ f['case_name_' ~ i] }}" maxlength="120"></div>
         <div class="field"><label for="cl{{ i }}">Customer or account <span class="hint">Optional</span></label><input type="text" id="cl{{ i }}" name="case_label_{{ i }}" value="{{ f['case_label_' ~ i] }}" maxlength="120"></div>
       </div>
-      <div class="field" style="margin:0"><label for="ci{{ i }}">Input</label><textarea id="ci{{ i }}" name="case_input_{{ i }}">{{ f['case_input_' ~ i] }}</textarea></div>
+      {{ kind_field("ck" ~ i, "case_kind_" ~ i, f['case_kind_' ~ i]) }}
+      <div class="field flush"><label for="ci{{ i }}">The input</label><textarea id="ci{{ i }}" name="case_input_{{ i }}">{{ f['case_input_' ~ i] }}</textarea></div>
     </fieldset>
     {% if i == 8 %}</details>{% endif %}
     {% endfor %}
@@ -56,19 +61,23 @@
 
   <section class="card step" aria-labelledby="st4">
     <h2 id="st4"><span class="step-num" aria-hidden="true">4</span>Describe what good looks like</h2>
-    <p>Write 3 to 5 criteria. For each, say what a 5 and a 1 look like. The judge uses these to score every output.</p>
-    <div class="row-actions" style="margin:0 0 1rem">
-      <button class="btn btn-secondary" type="submit" name="action" value="draft">Draft criteria for me</button>
-      <span class="muted small">{{ "Claude drafts criteria from your prompt and test inputs. You can edit them." if settings.is_live else "In demo mode this fills in sample criteria for a Renewal risk summary." }}</span>
+    <p>Write 3 to 5 qualities. For each, say what a 5 and a 1 look like. The AI reviewer uses these to score every output.</p>
+    <div class="row-actions flush-top">
+      <button class="btn btn-secondary" type="submit" name="action" value="draft">Suggest qualities for me</button>
+      <span class="muted small">{{ "Claude suggests qualities from your prompt and examples, and which ones should be deal-breakers. You can edit them." if settings.is_live else "In the demo this fills in sample qualities for a Renewal risk summary, with suggested deal-breakers." }}</span>
     </div>
     {% for i in range(1, 6) %}
-    {% if i == 4 %}<details class="inline"{% if f['crit_name_4'] %} open{% endif %}><summary>Add a 4th or 5th criterion</summary>{% endif %}
+    {% if i == 4 %}<details class="inline"{% if f['crit_name_4'] %} open{% endif %}><summary>Add a 4th or 5th quality</summary>{% endif %}
     <fieldset class="slot">
-      <legend>Criterion {{ i }}{% if i > 3 %} (optional){% endif %}</legend>
+      <legend>Quality {{ i }}{% if i > 3 %} (optional){% endif %}</legend>
       <div class="field"><label for="kn{{ i }}">Name</label><input type="text" id="kn{{ i }}" name="crit_name_{{ i }}" value="{{ f['crit_name_' ~ i] }}" maxlength="120"></div>
       <div class="slot-grid">
-        <div class="field" style="margin:0"><label for="k5{{ i }}">A 5 looks like</label><textarea id="k5{{ i }}" name="crit_five_{{ i }}" style="min-height:4.5rem">{{ f['crit_five_' ~ i] }}</textarea></div>
-        <div class="field" style="margin:0"><label for="k1{{ i }}">A 1 looks like</label><textarea id="k1{{ i }}" name="crit_one_{{ i }}" style="min-height:4.5rem">{{ f['crit_one_' ~ i] }}</textarea></div>
+        <div class="field"><label for="k5{{ i }}">A 5 looks like</label><textarea id="k5{{ i }}" name="crit_five_{{ i }}" class="short">{{ f['crit_five_' ~ i] }}</textarea></div>
+        <div class="field"><label for="k1{{ i }}">A 1 looks like</label><textarea id="k1{{ i }}" name="crit_one_{{ i }}" class="short">{{ f['crit_one_' ~ i] }}</textarea></div>
+      </div>
+      <div class="check-row">
+        <input type="checkbox" id="kd{{ i }}" name="crit_deal_{{ i }}" value="1"{% if f['crit_deal_' ~ i] %} checked{% endif %}>
+        <label for="kd{{ i }}">This is a deal-breaker<span class="hint">Something the output must never get wrong. Most prompts have one or two.</span></label>
       </div>
     </fieldset>
     {% if i == 5 %}</details>{% endif %}
@@ -76,8 +85,8 @@
   </section>
 
   <section class="card step" aria-labelledby="st5">
-    <h2 id="st5"><span class="step-num" aria-hidden="true">5</span>Automatic checks (optional)</h2>
-    <p class="muted">Plain rules checked by code on every output. Leave any box empty to skip it.</p>
+    <h2 id="st5"><span class="step-num" aria-hidden="true">5</span>Quick checks (optional)</h2>
+    <p class="muted">Plain rules checked on every output. Leave any box empty to skip it.</p>
     <div class="checks-grid">
       <div class="field"><label for="ck-max">Word limit <span class="hint">For example, 150</span></label><input type="number" id="ck-max" name="max_words" min="1" max="5000" inputmode="numeric" value="{{ f.max_words }}"></div>
       <div class="field"><label for="ck-any">Must mention one of <span class="hint">Separate with commas</span></label><input type="text" id="ck-any" name="must_contain_any" value="{{ f.must_contain_any }}"></div>
@@ -88,10 +97,10 @@
   <div class="card">
     {% if settings.is_live %}
     <p class="muted">{{ estimate }}</p>
-    <button class="btn" type="submit" name="action" value="save">Save and score v1</button>
+    <button class="btn" type="submit" name="action" value="save">Save and score version 1</button>
     {% else %}
-    <button class="btn" type="submit" name="action" value="save" disabled aria-describedby="save-why">Save and score v1</button>
-    <p id="save-why" class="muted small" style="margin-top:.5rem">Saving is turned off in demo mode because scoring v1 needs Claude.</p>
+    <button class="btn" type="submit" name="action" value="save" disabled aria-describedby="save-why">Save and score version 1</button>
+    <p id="save-why" class="muted small flush-bottom">Saving is turned off in the demo because scoring version 1 needs Claude.</p>
     {% endif %}
   </div>
 </form>

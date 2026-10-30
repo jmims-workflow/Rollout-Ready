@@ -1,27 +1,30 @@
 {% extends "base.html" %}
-{% from "_macros.html" import notice %}
-{% block title %}Suites | {% endblock %}
+{% from "_macros.html" import notice, team_tag %}
+{% block title %}Your prompts | {% endblock %}
 {% block content %}
-<div class="case-head" style="justify-content:space-between">
-  <h1 class="page-title">Prompt suites</h1>
-  <a class="btn" href="/suites/new">Set up a new suite</a>
+<div class="case-head page-head">
+  <h1 class="page-title">Your prompts</h1>
+  <a class="btn" href="/prompts/new">Add a new prompt</a>
 </div>
-<p class="lede">A suite is one shared prompt, every version of it, and the small set of test inputs it runs on.</p>
+<p class="lede">Each prompt is one shared prompt your team relies on, every version of it, the examples it runs on, and what good looks like.</p>
 {% if error %}{{ notice(error, "error") }}{% endif %}
 {% for s in items %}
 <section class="card suite-card" aria-labelledby="s-{{ s.suite.id }}">
-  <h2 id="s-{{ s.suite.id }}"><a href="/suites/{{ s.suite.id }}">{{ s.suite.name }}</a></h2>
+  <div class="title-row">
+    <h2 id="s-{{ s.suite.id }}"><a href="/prompts/{{ s.suite.id }}">{{ s.suite.name }}</a></h2>
+    {{ team_tag(s.suite) }}
+  </div>
   {% if s.suite.description %}<p>{{ s.suite.description }}</p>{% endif %}
   <div class="meta-row">
     <span>Who uses it: {{ s.suite.who_uses_it or "Not set" }}</span>
-    <span>{{ s.cases|length }} test case{{ 's' if s.cases|length != 1 }}</span>
-    <span>{{ s.versions|length }} version{{ 's' if s.versions|length != 1 }}</span>
+    <span>{{ plural(s.cases|length, 'example') }}</span>
+    <span>{{ plural(s.versions|length, 'version') }}</span>
   </div>
   <ul class="plain-list versions-list small">
-    {% for v in s.versions %}<li><span class="version-id">{{ v.id }}</span><span>{% if v.title %}<strong>{{ v.title }}.</strong> {% endif %}{{ v.note }}</span></li>{% endfor %}
+    {% for v in s.versions %}<li><span class="version-id">Version {{ v.number }}</span><span>{% if v.title %}<strong>{{ v.title }}.</strong> {% endif %}{{ v.note }}</span></li>{% endfor %}
   </ul>
 </section>
 {% else %}
-<p>No suites yet.</p>
+<p>No prompts yet.</p>
 {% endfor %}
 {% endblock %}

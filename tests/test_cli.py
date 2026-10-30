@@ -19,7 +19,9 @@ def test_featured_run_exits_1(tmp_path, no_network, monkeypatch):
     assert r.exit_code == 1
     assert "Verdict: Not ready to roll out" in r.output
     assert "Worse: 2  Better: 4  No clear change: 2" in r.output
-    assert "**Verdict: Not ready to roll out**" in report.read_text()
+    text = report.read_text()
+    assert "**Verdict: Not ready to roll out**" in text
+    assert 'Missed a deal-breaker: "Answers every question asked" on 2 examples.' in text
     assert snapshot(SUITES) == before
 
 
@@ -29,8 +31,9 @@ def test_ready_run_exits_0(no_network):
 
 
 def test_keep_current_exits_1_and_no_difference_exits_0(no_network):
-    assert runner.invoke(app, ["run", "release-notes", "--current", "v2", "--new", "v3"]).exit_code == 1
-    assert runner.invoke(app, ["run", "release-notes", "--current", "v1", "--new", "v2"]).exit_code == 0
+    assert runner.invoke(app, ["run", "webinar-invite", "--current", "v2", "--new", "v3"]).exit_code == 1
+    assert runner.invoke(app, ["run", "webinar-invite", "--current", "v1", "--new", "v2"]).exit_code == 0
+    assert runner.invoke(app, ["run", "partner-outreach", "--current", "v1", "--new", "v2"]).exit_code == 0
 
 
 def test_live_without_key_falls_back(no_network, monkeypatch):
