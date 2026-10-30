@@ -1,0 +1,188 @@
+{
+  "version": "v3",
+  "model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "ran_at": "2026-10-10T19:02:00Z",
+  "cases": {
+    "shift-swap-approvals": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Big news for busy managers! You can now approve or decline shift swaps from anywhere with the FlowOS mobile app, and you'll never miss a request again thanks to instant notifications. Your approval rules stay the same.",
+          "scores": {
+            "plain": {
+              "score": 4,
+              "reason": "Plain, if a bit breathless."
+            },
+            "benefit": {
+              "score": 4,
+              "reason": "Leads with the benefit, though the opening line delays it."
+            },
+            "accurate": {
+              "score": 3,
+              "reason": "'Never miss a request again' and 'instant' promise more than the changelog says."
+            },
+            "length": {
+              "score": 4,
+              "reason": "Still short."
+            }
+          },
+          "input_tokens": 155,
+          "output_tokens": 194,
+          "judge_input_tokens": 734,
+          "judge_output_tokens": 218
+        }
+      ]
+    },
+    "insight-csv-export": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Export with confidence: your Insight CSV exports now include every single row, even when your dashboard covers more than 90 days.",
+          "scores": {
+            "plain": {
+              "score": 4,
+              "reason": "Plain and clear."
+            },
+            "benefit": {
+              "score": 4,
+              "reason": "Leads with the benefit."
+            },
+            "accurate": {
+              "score": 4,
+              "reason": "Accurate to the changelog, if a little promotional."
+            },
+            "length": {
+              "score": 4,
+              "reason": "One sentence, nothing to skip."
+            }
+          },
+          "input_tokens": 136,
+          "output_tokens": 172,
+          "judge_input_tokens": 693,
+          "judge_output_tokens": 218
+        }
+      ]
+    },
+    "timezone-fix": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Arizona teams, your schedules are now perfectly in sync! Shift times for every location now show correctly year round, and existing shifts were fixed automatically, so there's nothing you need to do.",
+          "scores": {
+            "plain": {
+              "score": 4,
+              "reason": "Plain language."
+            },
+            "benefit": {
+              "score": 4,
+              "reason": "Leads with what the customer gets."
+            },
+            "accurate": {
+              "score": 2,
+              "reason": "Says 'every location' and 'perfectly in sync', but the fix was only for Arizona's one hour offset."
+            },
+            "length": {
+              "score": 3,
+              "reason": "Short, but the first sentence is filler."
+            }
+          },
+          "input_tokens": 153,
+          "output_tokens": 189,
+          "judge_input_tokens": 727,
+          "judge_output_tokens": 218
+        }
+      ]
+    },
+    "faster-dashboards": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Say goodbye to waiting! Your biggest Insight dashboards now load up to three times faster, opening in about 3 seconds instead of 9.",
+          "scores": {
+            "plain": {
+              "score": 4,
+              "reason": "Plain, with a punchy opener."
+            },
+            "benefit": {
+              "score": 5,
+              "reason": "Very clear about what customers get."
+            },
+            "accurate": {
+              "score": 3,
+              "reason": "Drops 'in our tests' and the 20 tile detail, so it promises more than was measured."
+            },
+            "length": {
+              "score": 4,
+              "reason": "Short."
+            }
+          },
+          "input_tokens": 137,
+          "output_tokens": 172,
+          "judge_input_tokens": 695,
+          "judge_output_tokens": 218
+        }
+      ]
+    },
+    "mostly-internal": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Never miss a shift again! Shift reminders now reach your team within a minute, instead of up to 5 minutes, so everyone knows what's coming.",
+          "scores": {
+            "plain": {
+              "score": 4,
+              "reason": "Plain and easy to read."
+            },
+            "benefit": {
+              "score": 4,
+              "reason": "Says exactly how much faster reminders arrive."
+            },
+            "accurate": {
+              "score": 4,
+              "reason": "The timing matches the changelog, though 'never miss a shift' is a stretch."
+            },
+            "length": {
+              "score": 3,
+              "reason": "The opener adds words without adding facts."
+            }
+          },
+          "input_tokens": 142,
+          "output_tokens": 174,
+          "judge_input_tokens": 701,
+          "judge_output_tokens": 218
+        }
+      ]
+    },
+    "old-app-retirement": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Time to upgrade! The current FlowOS app has everything you love about Classic and more. Classic stops working on January 31, and from December 1 you'll see a banner with a download link.",
+          "scores": {
+            "plain": {
+              "score": 4,
+              "reason": "Plain language."
+            },
+            "benefit": {
+              "score": 4,
+              "reason": "Clear about what to do."
+            },
+            "accurate": {
+              "score": 3,
+              "reason": "'And more' isn't in the changelog, which only says all features moved over."
+            },
+            "length": {
+              "score": 3,
+              "reason": "The opener is filler."
+            }
+          },
+          "input_tokens": 148,
+          "output_tokens": 186,
+          "judge_input_tokens": 719,
+          "judge_output_tokens": 218
+        }
+      ]
+    }
+  }
+}

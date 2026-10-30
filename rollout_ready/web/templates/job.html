@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_macros.html" import notice %}
+{% block title %}Running | {% endblock %}
+{% block head %}{% if not job.finished %}<noscript><meta http-equiv="refresh" content="2"></noscript>{% endif %}{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ job.title }}</h1>
+<div class="card" data-job="{{ job.id }}">
+  {% if job.error %}
+  {{ notice(job.error, "error") }}
+  <p><a href="{{ job.done_url }}">See what was saved so far</a></p>
+  {% else %}
+  <label for="job-progress">Progress</label>
+  <progress id="job-progress" max="100" value="{{ job.percent }}">{{ job.percent }}%</progress>
+  <p class="progress-text" role="status" aria-live="polite" data-job-status>{{ job.message }} ({{ job.done }} of {{ job.total or '?' }} calls)</p>
+  <p class="muted small">You can leave this page open. Each result is saved as soon as it comes back, so nothing is lost if a call fails.</p>
+  <noscript><p class="muted small">This page refreshes itself every few seconds.</p></noscript>
+  {% endif %}
+</div>
+{% endblock %}

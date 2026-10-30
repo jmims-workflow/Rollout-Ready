@@ -1,0 +1,31 @@
+name: Support ticket summary
+description: Turns a Connect support ticket thread into a handoff summary for the engineering team.
+who_uses_it: Connect support agents, when they hand a ticket to engineering.
+input_label: What a support agent would paste in
+model: claude-sonnet-5-5
+repeats: 1
+threshold: 0.5
+rubric:
+  - id: problem
+    name: Names the actual problem
+    five_looks_like: States the customer's real problem in one plain sentence an engineer can act on.
+    one_looks_like: Restates the ticket title or lists symptoms without the underlying problem.
+  - id: steps
+    name: Steps to reproduce
+    five_looks_like: Gives the steps, device and app version an engineer needs to see it happen, taken from the thread.
+    one_looks_like: No steps, or steps an engineer could not follow.
+  - id: tried
+    name: What was already tried
+    five_looks_like: Lists what support and the customer already tried, so engineering does not repeat it.
+    one_looks_like: Leaves out what was tried, or invents fixes nobody tried.
+  - id: impact
+    name: Customer impact and urgency
+    five_looks_like: Says who is affected, how many, and any deadline, using facts from the thread.
+    one_looks_like: No sense of impact, or impact blown up beyond what the thread says.
+checks:
+  - type: max_words
+    value: 120
+    label: Under 120 words
+  - type: must_not_contain
+    value: ["\u2014"]
+    label: No em dashes
