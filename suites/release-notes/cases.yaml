@@ -1,0 +1,30 @@
+- id: shift-swap-approvals
+  name: Shift swap approvals
+  label: FlowOS
+  input: |
+    FLOW-2291: Managers can now approve or decline shift swap requests from the mobile app. Previously approvals were web only. Push notification sent to the manager when a swap is requested. Approval rules (same role, max hours) unchanged.
+- id: insight-csv-export
+  name: CSV export fix
+  label: Insight
+  input: |
+    INS-884: Fixed CSV export dropping rows when a dashboard filter used a date range longer than 90 days. Exports now include every row. No change to export format.
+- id: timezone-fix
+  name: Time zone bug fix
+  label: FlowOS
+  input: |
+    FLOW-2310: Fix shifts showing one hour off for locations in Arizona (no daylight saving time). Caused by tz offset cached at location creation. Recomputed per shift now. Existing shifts corrected automatically, no action needed.
+- id: faster-dashboards
+  name: Faster dashboard loading
+  label: Insight
+  input: |
+    INS-901: Query layer caching for dashboards with more than 20 tiles. Median load time for large dashboards down from 9s to 3s in our tests. Small dashboards unchanged.
+- id: mostly-internal
+  name: Mostly internal change
+  label: FlowOS
+  input: |
+    FLOW-2324: Moved notification sending to the new queue service. Cleanup of legacy jobs. Side effect: shift reminder notifications now arrive within 1 minute instead of up to 5 minutes.
+- id: old-app-retirement
+  name: Retiring the old mobile app
+  label: FlowOS
+  input: |
+    FLOW-2330: The legacy FlowOS Classic mobile app will stop working on January 31. All features are in the current FlowOS app. Users signed in to Classic will see a banner with a download link starting December 1.

@@ -1,0 +1,24 @@
+{# Add a test case. Needs: suite, next_url. Works without JavaScript; app.js adds it without a reload. #}
+{% if settings.is_live %}
+<form method="post" action="/suites/{{ suite.id }}/cases" data-add-case>
+  <input type="hidden" name="next" value="{{ next_url }}">
+  <div class="slot-grid">
+    <div class="field">
+      <label for="ac-name">Name <span class="hint">A few words on what makes it hard, like "Two people, two different asks".</span></label>
+      <input type="text" id="ac-name" name="name" required maxlength="120">
+    </div>
+    <div class="field">
+      <label for="ac-label">Customer or account <span class="hint">Optional. Use a made-up name.</span></label>
+      <input type="text" id="ac-label" name="label" maxlength="120">
+    </div>
+  </div>
+  <div class="field">
+    <label for="ac-input">Input <span class="hint">Exactly what someone would paste in. No ideal answer needed. Change names and details first.</span></label>
+    <textarea id="ac-input" name="input" required></textarea>
+  </div>
+  <button class="btn btn-secondary" type="submit">Save test case</button>
+  <span class="small" role="status" aria-live="polite" data-add-status></span>
+</form>
+{% else %}
+<p class="muted">Demo mode is read-only, so new test cases can't be saved here. In live mode this saves the case to the suite straight away.</p>
+{% endif %}

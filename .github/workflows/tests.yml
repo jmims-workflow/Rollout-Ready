@@ -1,0 +1,32 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      ROLLOUT_MODE: demo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        run: pytest -q
+      - name: Featured comparison (expected to exit 1, "Not ready to roll out")
+        run: |
+          set +e
+          rollout run followup-email --current v2 --new v3 --report summary.md
+          code=$?
+          set -e
+          cat summary.md
+          if [ "$code" -ne 1 ]; then
+            echo "Expected exit code 1, got $code"
+            exit 1
+          fi

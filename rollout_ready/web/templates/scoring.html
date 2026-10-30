@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}How scoring works | {% endblock %}
+{% block content %}
+<h1 class="page-title">How scoring works</h1>
+<p class="lede">Rollout Ready runs your new version on a small set of saved test inputs, scores every output, and compares it with the version your team uses today.</p>
+
+<section class="card">
+  <h2>1. Averages hide problems</h2>
+  <p>The verdict looks at how many test cases got worse, not at the average score. A change can lift the average while quietly breaking the cases you care about.</p>
+  <p>In the example, version 3 of the follow-up email raised the average from 3.6 to 3.9, but two emails stopped answering the customer's questions. So the verdict is "Not ready to roll out."</p>
+  <ul>
+    <li><strong>Worse:</strong> the score dropped by 0.5 or more, or an automatic check that used to pass now fails.</li>
+    <li><strong>Better:</strong> the score rose by 0.5 or more, or a check that used to fail now passes.</li>
+    <li><strong>No clear change:</strong> anything smaller. One run always varies a little.</li>
+  </ul>
+  <p>Then:</p>
+  <ul>
+    <li>Nothing worse and at least one better: <strong>Ready to roll out</strong>.</li>
+    <li>Nothing worse and nothing better: <strong>No clear difference</strong>.</li>
+    <li>Some worse, but more cases better than worse: <strong>Not ready to roll out</strong>. Fix the worse cases first.</li>
+    <li>Some worse, and no more better than worse: <strong>Keep the current version</strong>.</li>
+  </ul>
+</section>
+
+<section class="card">
+  <h2>2. Test cases are cheap</h2>
+  <p>A test case is only an input: what someone on your team would paste in. Nobody has to write the ideal answer. Six to eight cases is plenty, as long as they include the hard ones.</p>
+  <p>A good habit: when a real output goes wrong, add that input as a test case, with names and details changed.</p>
+</section>
+
+<section class="card">
+  <h2>3. Two kinds of scoring</h2>
+  <p><strong>Automatic checks</strong> are plain rules run by code, like a word limit, words that must not appear, or words that must. They are free, instant and always give the same answer.</p>
+  <p><strong>The judge</strong> is Claude, scoring each part of what good looks like from 1 to 5 with a one-sentence reason. A case's score is the average of those scores.</p>
+</section>
+
+<section class="card">
+  <h2>4. Blind, independent judging</h2>
+  <p>The judge scores one output at a time. It is never told which version wrote it, and never sees the other version's output, so it can't take sides. Because each output is scored on its own, saved scores can be reused: only your new version needs to run.</p>
+  <p class="muted small">The judge is a model and can be wrong, so read the reasons on any case that got worse before you decide.</p>
+</section>
+{% endblock %}

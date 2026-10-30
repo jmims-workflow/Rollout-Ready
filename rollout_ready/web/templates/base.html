@@ -1,0 +1,46 @@
+{% from "_macros.html" import icon, notice %}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{% endblock %}Rollout Ready: Test a prompt change before your team sees it.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+{% block head %}{% endblock %}
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="brand" href="/">
+      <img class="brand-mark" src="/static/logo.svg" alt="" width="36" height="36">
+      <span class="brand-text"><span class="brand-name">Rollout Ready</span><span class="tagline">Test a prompt change before your team sees it.</span></span>
+    </a>
+    <nav class="main-nav" aria-label="Main">
+      <ul>
+        <li><a href="/"{% if nav == 'compare' %} aria-current="page"{% endif %}>Compare</a></li>
+        <li><a href="/test"{% if nav == 'test' %} aria-current="page"{% endif %}>Test a new version</a></li>
+        <li><a href="/suites"{% if nav == 'suites' %} aria-current="page"{% endif %}>Suites</a></li>
+        <li><a href="/scoring"{% if nav == 'scoring' %} aria-current="page"{% endif %}>How scoring works</a></li>
+      </ul>
+    </nav>
+    {% if settings.is_live %}
+    <span class="mode-pill mode-live">{{ icon('dot') }}Live mode: runs on Claude</span>
+    {% else %}
+    <span class="mode-pill mode-demo">{{ icon('dot') }}Demo mode: recorded runs, no API key</span>
+    {% endif %}
+  </div>
+</header>
+<main id="main" class="wrap">
+  {% if settings.fallback_notice %}{{ notice(settings.fallback_notice) }}{% endif %}
+  {% block content %}{% endblock %}
+</main>
+<footer class="site-footer">
+  <div class="wrap">Rollout Ready. Example data is fictional (Northstar Systems). <a href="/scoring">How scoring works</a></div>
+</footer>
+<script src="/static/app.js" defer></script>
+</body>
+</html>

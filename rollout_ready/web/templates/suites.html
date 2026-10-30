@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import notice %}
+{% block title %}Suites | {% endblock %}
+{% block content %}
+<div class="case-head" style="justify-content:space-between">
+  <h1 class="page-title">Prompt suites</h1>
+  <a class="btn" href="/suites/new">Set up a new suite</a>
+</div>
+<p class="lede">A suite is one shared prompt, every version of it, and the small set of test inputs it runs on.</p>
+{% if error %}{{ notice(error, "error") }}{% endif %}
+{% for s in items %}
+<section class="card suite-card" aria-labelledby="s-{{ s.suite.id }}">
+  <h2 id="s-{{ s.suite.id }}"><a href="/suites/{{ s.suite.id }}">{{ s.suite.name }}</a></h2>
+  {% if s.suite.description %}<p>{{ s.suite.description }}</p>{% endif %}
+  <div class="meta-row">
+    <span>Who uses it: {{ s.suite.who_uses_it or "Not set" }}</span>
+    <span>{{ s.cases|length }} test case{{ 's' if s.cases|length != 1 }}</span>
+    <span>{{ s.versions|length }} version{{ 's' if s.versions|length != 1 }}</span>
+  </div>
+  <ul class="plain-list versions-list small">
+    {% for v in s.versions %}<li><span class="version-id">{{ v.id }}</span><span>{% if v.title %}<strong>{{ v.title }}.</strong> {% endif %}{{ v.note }}</span></li>{% endfor %}
+  </ul>
+</section>
+{% else %}
+<p>No suites yet.</p>
+{% endfor %}
+{% endblock %}

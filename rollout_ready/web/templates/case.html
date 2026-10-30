@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, pill, check_mark, notice %}
+{% block title %}{{ row.case.name }} | {% endblock %}
+{% block content %}
+<a class="back" href="/?suite={{ suite.id }}&amp;current={{ current_id }}&amp;new={{ new_id }}&amp;tab=cases#cases">Back to the comparison</a>
+<h1>{{ row.case.name }}</h1>
+<div class="case-head">
+  {% if row.case.label %}<span class="muted">{{ row.case.label }}</span>{% endif %}
+  {{ pill(row.result) }}
+  <span class="score">{{ current_id }} {{ fmt(row.current_score) }} to {{ new_id }} {{ fmt(row.new_score) }} ({{ fmt_change(row.change) }})</span>
+</div>
+<p>{{ row.headline }}</p>
+
+<section class="card" aria-labelledby="input-h">
+  <h2 id="input-h">The test input</h2>
+  <p class="muted small">{{ suite.input_label }}</p>
+  <pre class="input-text">{{ row.case.input }}</pre>
+</section>
+
+<h2>The two outputs</h2>
+<div class="two-col">
+  {% for vid, text, score, words in [(current_id, row.current_output, row.current_score, row.current_words), (new_id, row.new_output, row.new_score, row.new_words)] %}
+  <section class="panel" aria-label="Output from {{ vid }}">
+    <h3>{{ 'Current version' if loop.first else 'New version' }} ({{ vid }})</h3>
+    <div class="panel-meta"><span>Score <span class="score">{{ fmt(score) }}</span></span><span>{{ words }} words</span></div>
+    <pre class="output">{{ text }}</pre>
+  </section>
+  {% endfor %}
+</div>
+
+<h2 style="margin-top:1.5rem">Scores</h2>
+<div class="table-card table-scroll">
+<table>
+  <thead><tr><th scope="col">Criterion</th><th scope="col" class="num">{{ current_id }}</th><th scope="col" class="num">{{ new_id }}</th><th scope="col">Judge's reason for the {{ new_id }} score</th></tr></thead>
+  <tbody>
+  {% for c in row.criteria %}
+  <tr>
+    <th scope="row">{{ c.criterion.name }}</th>
+    <td class="num score">{{ fmt_crit(c.current) }}</td>
+    <td class="num score {{ 'change-neg' if c.new < c.current else 'change-pos' if c.new > c.current }}">{{ fmt_crit(c.new) }}</td>
+    <td>{{ c.new_reason }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="muted small">The judge scores each output on its own. It never sees which version wrote it, or the other version's output.</p>
+
+<h2 style="margin-top:1.5rem">Automatic checks</h2>
+{% if row.checks %}
+<div class="table-card table-scroll">
+<table>
+  <thead><tr><th scope="col">Check</th><th scope="col">{{ current_id }}</th><th scope="col">{{ new_id }}</th></tr></thead>
+  <tbody>
+  {% for c in row.checks %}
+  <tr>
+    <th scope="row">{{ c.label }}</th>
+    <td>{{ check_mark(c.current.passed) }}<span class="hint">{{ c.current.detail }}</span></td>
+    <td>{{ check_mark(c.new.passed) }}<span class="hint">{{ c.new.detail }}</span></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}<p class="muted">This suite has no automatic checks.</p>{% endif %}
+{% endblock %}

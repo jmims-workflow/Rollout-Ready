@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_macros.html" import notice %}
+{% block title %}{{ suite.name }} | {% endblock %}
+{% block content %}
+<a class="back" href="/suites">All suites</a>
+<h1>{{ suite.name }}</h1>
+{% if suite.description %}<p class="lede">{{ suite.description }}</p>{% endif %}
+<div class="meta-row"><span>Who uses it: {{ suite.who_uses_it or "Not set" }}</span><span>Model tested: <span class="mono">{{ suite.model }}</span></span></div>
+{% if message %}{{ notice(message, "info") }}{% endif %}
+{% if error %}{{ notice(error, "error") }}{% endif %}
+<div class="row-actions" style="margin-bottom:1.25rem">
+  {% if versions|length > 1 %}<a class="btn btn-secondary" href="/?suite={{ suite.id }}">Compare versions</a>{% endif %}
+  <a class="btn" href="/test?suite={{ suite.id }}">Test a new version</a>
+</div>
+
+<section class="card" aria-labelledby="v-h">
+  <h2 id="v-h">Versions</h2>
+  <ul class="plain-list versions-list">
+    {% for v in versions %}
+    <li><span class="version-id">{{ v.id }}</span>
+      <span>{% if v.title %}<strong>{{ v.title }}.</strong> {% endif %}{{ v.note }} <span class="muted small">Saved {{ v.created }}{% if v.id == in_use %}. In use now.{% endif %}</span>
+        <details class="inline"><summary>Show the prompt</summary><pre class="prompt-text" tabindex="0">{{ v.text }}</pre></details>
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="muted small">Versions are never overwritten or deleted. A new version always gets the next number.</p>
+</section>
+
+<section class="card" aria-labelledby="c-h">
+  <h2 id="c-h">Test cases ({{ cases|length }})</h2>
+  <ul class="plain-list" data-case-list>
+    {% for c in cases %}
+    <li>
+      <strong>{{ c.name }}</strong>{% if c.label %} <span class="muted">{{ c.label }}</span>{% endif %}
+      <details class="inline">
+        <summary>{{ 'Show or edit' if settings.is_live else 'Show the input' }}<span class="visually-hidden"> {{ c.name }}</span></summary>
+        {% if settings.is_live %}
+        <form method="post" action="/suites/{{ suite.id }}/cases/{{ c.id }}">
+          <div class="slot-grid">
+            <div class="field"><label for="n-{{ c.id }}">Name</label><input type="text" id="n-{{ c.id }}" name="name" value="{{ c.name }}" required maxlength="120"></div>
+            <div class="field"><label for="l-{{ c.id }}">Customer or account <span class="hint">Optional</span></label><input type="text" id="l-{{ c.id }}" name="label" value="{{ c.label }}" maxlength="120"></div>
+          </div>
+          <div class="field"><label for="i-{{ c.id }}">Input</label><textarea id="i-{{ c.id }}" name="input" required>{{ c.input }}</textarea></div>
+          <p class="muted small">Changing the input means this case runs again next time, for every version you compare.</p>
+          <button class="btn btn-secondary" type="submit">Save changes</button>
+        </form>
+        {% else %}
+        <pre class="input-text">{{ c.input }}</pre>
+        {% endif %}
+      </details>
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="tip">Tip: when a real output goes wrong, add that input as a test case. Change names and details first.</p>
+  <details class="inline" id="add-case"><summary>Add a test case</summary>{% include "_add_case.html" %}</details>
+</section>
+
+<section class="card" aria-labelledby="r-h">
+  <h2 id="r-h">What good looks like</h2>
+  <div class="table-card table-scroll">
+  <table>
+    <thead><tr><th scope="col">Criterion</th><th scope="col">A 5 looks like</th><th scope="col">A 1 looks like</th></tr></thead>
+    <tbody>{% for c in suite.rubric %}<tr><th scope="row">{{ c.name }}</th><td>{{ c.five_looks_like }}</td><td>{{ c.one_looks_like }}</td></tr>{% endfor %}</tbody>
+  </table>
+  </div>
+  <h3>Automatic checks</h3>
+  {% if suite.checks %}<ul>{% for c in suite.checks %}<li>{{ c.label }}</li>{% endfor %}</ul>{% else %}<p class="muted">None.</p>{% endif %}
+  <p class="muted small">A case counts as worse or better when its score moves by {{ fmt(suite.threshold) }} or more. Each case runs {{ suite.repeats }} time{{ 's' if suite.repeats != 1 }} per version.</p>
+</section>
+{% endblock %}

@@ -1,0 +1,280 @@
+{
+  "version": "v2",
+  "model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "ran_at": "2026-10-08T15:12:00Z",
+  "cases": {
+    "ridgeway-pricing": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Dana and Sam,\n\nThanks for the time today. It was useful to hear how Ridgeway runs dispatch on FlowOS across your three sites, and where driver messaging falls short.\n\nDana, you asked whether Connect is priced per seat or per site. It's per site, so your quote will be based on your 3 locations, not your 40 seats. I'll send the quote by Friday so you have it well before your November 15 budget meeting.\n\nSam, you asked whether Connect needs single sign-on setup on your side. It doesn't. Connect uses the same single sign-on as FlowOS, so your existing setup carries over.\n\nNext step: I'd like to hold the technical walkthrough with Sam on Tuesday, November 10 at 2 pm. Sam, does that work? If not, send me a time that week.\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Pricing, seat count and single sign-on all match, though a quote by Friday goes a little beyond what the notes say was agreed."
+            },
+            "answers": {
+              "score": 4,
+              "reason": "Answers Dana's and Sam's questions directly and in the order they were asked."
+            },
+            "next_step": {
+              "score": 4,
+              "reason": "Proposes a specific walkthrough time with Sam, though the quote is a second action alongside it."
+            },
+            "length": {
+              "score": 3,
+              "reason": "Complete, but long for a busy reader, and the opening paragraph could go."
+            },
+            "person": {
+              "score": 5,
+              "reason": "Warm, plain and clearly written to these two people about their situation."
+            }
+          },
+          "input_tokens": 342,
+          "output_tokens": 326,
+          "judge_input_tokens": 912,
+          "judge_output_tokens": 230
+        }
+      ]
+    },
+    "calloway-two-asks": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Priya and Marcus,\n\nThank you both for the time today.\n\nPriya, you asked whether you can pilot Connect at 2 clinics before committing to all 12. Yes. Connect can be piloted at up to 3 sites for 30 days, so a 2-clinic pilot works well.\n\nMarcus, you asked for our security overview and where message data is stored. All Connect message data is stored in US data centers, and I've attached the security overview to this email.\n\nNext step: I'll send a pilot plan for the two clinics by Friday, November 13, so we can review it together when Marcus is back on November 16 and keep your end-of-December decision on track.\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Pilot terms, data location and Marcus's return date all match; saying the overview is attached assumes the rep attaches it."
+            },
+            "answers": {
+              "score": 4,
+              "reason": "Answers both people's questions in order, with a direct yes on the pilot."
+            },
+            "next_step": {
+              "score": 4,
+              "reason": "One clear next step with an owner and a date, timed around Marcus's return."
+            },
+            "length": {
+              "score": 3,
+              "reason": "Clear but a little long, since restating each question adds words."
+            },
+            "person": {
+              "score": 4,
+              "reason": "Warm and specific to both readers."
+            }
+          },
+          "input_tokens": 350,
+          "output_tokens": 299,
+          "judge_input_tokens": 893,
+          "judge_output_tokens": 230
+        }
+      ]
+    },
+    "brightwater-short-call": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Tom,\n\nThanks for making time for a quick call today. It's great to hear that Brightwater is bringing on seasonal schedulers, and I'm glad FlowOS has been working well for your team.\n\nTo recap what we discussed: you're currently on FlowOS with 25 seats at one site, and you'd like to add 5 seats for the seasonal schedulers who start on December 1. That would bring you to 30 seats in total.\n\nYou didn't have any other questions today, but if anything comes up as you plan for the season, I'm always happy to help.\n\nNext step: I'll send the order form today. If you can sign it by Friday, the 5 new seats will be live in time for December 1.\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Seat counts, the December 1 start and the Friday signing all match the notes."
+            },
+            "answers": {
+              "score": 4,
+              "reason": "There were no questions, and it says so without inventing any."
+            },
+            "next_step": {
+              "score": 3,
+              "reason": "The step is clear but buried at the end, after a long recap."
+            },
+            "length": {
+              "score": 2,
+              "reason": "Far longer than a 15 minute call needs; Tom already knows his own seat count."
+            },
+            "person": {
+              "score": 4,
+              "reason": "Friendly and natural, if a little chatty."
+            }
+          },
+          "input_tokens": 310,
+          "output_tokens": 305,
+          "judge_input_tokens": 860,
+          "judge_output_tokens": 230
+        }
+      ]
+    },
+    "harbor-point-rambling": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Jen,\n\nThanks to you and the team for the time today, and to Raj for joining from IT. I enjoyed hearing how Member Services runs across your 9 branches, and that you may grow to 10 next year.\n\nIt was helpful to hear about the holiday rush, and how hard it gets when tellers call out sick. It also makes sense that the tool you tried in 2023 didn't stick when managers kept going back to spreadsheets. Shift swapping in FlowOS is built for exactly that kind of last-minute coverage, so I'm glad it stood out to you.\n\nYou asked whether your trial can be extended, since your board doesn't meet until January. Yes: FlowOS trials can be extended once, by 14 days. I'll set that up today. That won't reach January on its own, so let's plan what the board needs to see before the extended trial ends.\n\nNext step: I'll send a short summary you can forward by Thursday. It would also help to know who owns the decision. Is that Lisa Brandt? If so, could you introduce us?\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 3,
+              "reason": "Gets the trial terms right, but claims shift swapping is built for this situation, which the notes don't support."
+            },
+            "answers": {
+              "score": 4,
+              "reason": "Answers the trial question clearly and is honest that 14 days won't reach January."
+            },
+            "next_step": {
+              "score": 3,
+              "reason": "Has a dated step, but it competes with a second request about Lisa Brandt, so it isn't clear which matters most."
+            },
+            "length": {
+              "score": 1,
+              "reason": "Close to 200 words, when Jen asked for something short she could forward."
+            },
+            "person": {
+              "score": 4,
+              "reason": "Warm and specific to Jen's situation."
+            }
+          },
+          "input_tokens": 399,
+          "output_tokens": 386,
+          "judge_input_tokens": 1028,
+          "judge_output_tokens": 230
+        }
+      ]
+    },
+    "alder-finch-pause": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Hannah,\n\nThanks for the time today. I'm glad the FlowOS demo went over well, and I understand that peak season isn't the moment for a new tool.\n\nYou asked whether today's pricing will hold until spring. I can't promise that yet, but I'll find out and let you know.\n\nYou also asked whether your store managers can keep the demo login. I'm checking on that and will confirm.\n\nNext step: let's book a 30 minute call for Tuesday, November 17 to go over pricing and the login, and plan the March restart.\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Accurate, and careful not to commit on price."
+            },
+            "answers": {
+              "score": 4,
+              "reason": "Responds to both questions honestly, though neither has a full answer yet."
+            },
+            "next_step": {
+              "score": 2,
+              "reason": "Asks for a meeting this month when Hannah asked to pause until March, which works against what she asked for."
+            },
+            "length": {
+              "score": 3,
+              "reason": "Fine length, with some repetition."
+            },
+            "person": {
+              "score": 4,
+              "reason": "A considerate tone that respects her busy season."
+            }
+          },
+          "input_tokens": 336,
+          "output_tokens": 270,
+          "judge_input_tokens": 850,
+          "judge_output_tokens": 230
+        }
+      ]
+    },
+    "kestrel-trial-extension": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Owen,\n\nThanks for the time today. It's good to hear the trial is going well and that the night crew is still working through shift templates.\n\nYou asked whether we can extend the trial. Yes: FlowOS trials can be extended once, by 14 days, so your trial would now end November 20.\n\nYou also asked whether trial data carries over if you buy. It does, so nothing your team sets up now will be lost.\n\nNext step: once you've reviewed the results with Elena, let's find a time the week of November 16 to talk through next steps.\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Extension terms, the new end date and the data carry-over all match."
+            },
+            "answers": {
+              "score": 4,
+              "reason": "Both questions are answered directly and in order."
+            },
+            "next_step": {
+              "score": 3,
+              "reason": "Gives a week but no owner or specific time, and 'talk through next steps' is vague."
+            },
+            "length": {
+              "score": 3,
+              "reason": "A little long for two simple answers."
+            },
+            "person": {
+              "score": 4,
+              "reason": "Warm and specific to Owen's situation."
+            }
+          },
+          "input_tokens": 322,
+          "output_tokens": 276,
+          "judge_input_tokens": 842,
+          "judge_output_tokens": 230
+        }
+      ]
+    },
+    "meridian-insight-demo": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Carla,\n\nThanks to you and the dispatch leads for joining the Insight demo today.\n\nYou asked how often dashboards refresh: every 15 minutes.\n\nThe dispatch leads asked about alerts on late loads. That isn't available today. It's on our roadmap, but I don't have a date to share, so I'd plan around what Insight does now.\n\nNext step: Carla, if you can share the sample data by November 12, I'll build a dashboard on your own numbers and walk you through it the following week.\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Refresh rate and roadmap status match the notes, with no promise on alerts."
+            },
+            "answers": {
+              "score": 4,
+              "reason": "Both questions are answered plainly and in order."
+            },
+            "next_step": {
+              "score": 4,
+              "reason": "A clear owner and date for the sample data, though the walkthrough after it has no day."
+            },
+            "length": {
+              "score": 4,
+              "reason": "Brief and well paced."
+            },
+            "person": {
+              "score": 4,
+              "reason": "Plain and friendly."
+            }
+          },
+          "input_tokens": 345,
+          "output_tokens": 263,
+          "judge_input_tokens": 853,
+          "judge_output_tokens": 230
+        }
+      ]
+    },
+    "lakeshore-no-show": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Dr. Haddad,\n\nSorry we missed each other this morning. I know mornings at a four-office practice can change fast.\n\nOn the form you mentioned that hygienist double-booking is your biggest scheduling headache. That's a common one, and I'd like to show you how FlowOS handles it in about 20 minutes.\n\nNext step: could we try Thursday, November 12 at 10 am, or Friday, November 13 at 2 pm? If neither works, reply with a time that does and I'll make it work.\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Sticks to what he wrote on the form; 'a common one' is a mild claim the notes don't support."
+            },
+            "answers": {
+              "score": 3,
+              "reason": "There were no questions, and it repeats his problem without saying anything specific about it."
+            },
+            "next_step": {
+              "score": 4,
+              "reason": "Two specific times and an easy fallback, owned by the rep."
+            },
+            "length": {
+              "score": 3,
+              "reason": "A little longer than a no-show note needs."
+            },
+            "person": {
+              "score": 4,
+              "reason": "Understanding and not pushy."
+            }
+          },
+          "input_tokens": 325,
+          "output_tokens": 258,
+          "judge_input_tokens": 828,
+          "judge_output_tokens": 230
+        }
+      ]
+    }
+  }
+}

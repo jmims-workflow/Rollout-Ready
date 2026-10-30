@@ -1,0 +1,10 @@
+.env
+runs/
+suites/*/runs/
+.git
+.github
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+docs/screenshots/

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon, notice %}
+{% block title %}Test a new version | {% endblock %}
+{% block content %}
+<h1 class="page-title">Test a new version</h1>
+<p class="lede">Paste the change you want to make. It runs against your saved test cases, and you get one plain answer: is it ready to roll out?</p>
+
+{% if not settings.is_live %}
+{{ notice("This public demo can't call Claude, so it runs one saved example: version 4 of the follow-up email, compared with version 2. In live mode you would paste your own version here.", "info") }}
+{% endif %}
+{% if error %}{{ notice(error, "error") }}{% endif %}
+
+<form class="card" method="get" action="/test">
+  <div class="compare-grid" style="grid-template-columns: 1.2fr 1fr auto;">
+    <div class="field">
+      <label for="t-suite">Prompt suite</label>
+      <select id="t-suite" name="suite" data-autosubmit {% if not settings.is_live %}disabled{% endif %}>
+        {% for s in suites %}<option value="{{ s.id }}"{% if s.id == suite.id %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="t-against">Compare against</label>
+      <select id="t-against" name="against" data-autosubmit {% if not settings.is_live %}disabled{% endif %}>
+        {% for v in versions %}<option value="{{ v.id }}"{% if v.id == against.id %} selected{% endif %}>{{ v.id }}: {{ v.summary }}{% if v.id == in_use %} (in use now){% endif %}</option>{% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-secondary" type="submit" {% if not settings.is_live %}disabled{% endif %}>Show</button>
+  </div>
+</form>
+
+<form method="post" action="/test" id="run-form" data-run-form>
+  <input type="hidden" name="suite" value="{{ suite.id }}">
+  <input type="hidden" name="against" value="{{ against.id }}">
+  <div class="two-col">
+    <section class="panel" aria-labelledby="against-h">
+      <h2 id="against-h">{{ against.id }}: {{ against.summary }}</h2>
+      <p class="muted small">This is the version you are comparing against. Its saved scores are reused, so only your new version needs to run.</p>
+      <pre class="prompt-text" tabindex="0" aria-label="Prompt text of {{ against.id }}">{{ against.text }}</pre>
+    </section>
+    <section class="panel">
+      <div class="field">
+        <label for="prompt_text">Paste your new version
+          <span class="hint">Paste exactly what you would put in your custom GPT, Gem, Claude Project or shared doc.</span></label>
+        <textarea id="prompt_text" name="prompt_text" class="prompt" required
+          {% if not settings.is_live %}readonly{% endif %} aria-describedby="limit-hint">{{ prompt_text }}</textarea>
+        <span id="limit-hint" class="hint">Up to 20,000 characters.</span>
+      </div>
+    </section>
+  </div>
+
+  <div class="card" style="margin-top:1.25rem">
+    <div class="field">
+      <label for="note">What changed and why
+        <span class="hint">One line, so you and your team can tell versions apart later.</span></label>
+      <input type="text" id="note" name="note" required maxlength="300" value="{{ note }}" {% if not settings.is_live %}readonly{% endif %}>
+    </div>
+  </div>
+</form>
+
+<section class="card" aria-labelledby="cases-h">
+  <h2 id="cases-h">The saved test cases that will run ({{ cases|length }})</h2>
+  <ul class="plain-list case-list" data-case-list>
+    {% for c in cases %}<li><strong>{{ c.name }}</strong>{% if c.label %}<span class="muted">{{ c.label }}</span>{% endif %}</li>{% endfor %}
+  </ul>
+  <p class="tip">Tip: when a real output goes wrong, add that input here as a test case. Change names and details first.</p>
+  <details class="inline" id="add-case">
+    <summary>Add a test case</summary>
+    {% include "_add_case.html" %}
+  </details>
+</section>
+
+<div class="card">
+  <p data-estimate>{{ estimate }}</p>
+  <button class="btn" type="submit" form="run-form" data-run-button>{{ 'Run test' if settings.is_live else 'Run the saved example' }}</button>
+  <p class="progress-text" role="status" aria-live="polite" data-run-status></p>
+</div>
+{% endblock %}

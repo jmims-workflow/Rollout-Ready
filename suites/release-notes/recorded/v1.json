@@ -1,0 +1,188 @@
+{
+  "version": "v1",
+  "model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "ran_at": "2026-09-02T15:10:00Z",
+  "cases": {
+    "shift-swap-approvals": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Managers can now approve or decline shift swap requests from the FlowOS mobile app, not just the web. They'll get a notification when a swap is requested. Approval rules stay the same.",
+          "scores": {
+            "plain": {
+              "score": 4,
+              "reason": "Clear and free of jargon."
+            },
+            "benefit": {
+              "score": 4,
+              "reason": "Says what managers can now do, though only after a little setup."
+            },
+            "accurate": {
+              "score": 4,
+              "reason": "Matches the changelog, including that rules are unchanged."
+            },
+            "length": {
+              "score": 4,
+              "reason": "Two short sentences plus a short third."
+            }
+          },
+          "input_tokens": 130,
+          "output_tokens": 186,
+          "judge_input_tokens": 725,
+          "judge_output_tokens": 218
+        }
+      ]
+    },
+    "insight-csv-export": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "We fixed an issue where Insight CSV exports could leave out rows when a dashboard was filtered to more than 90 days. Exports now include every row.",
+          "scores": {
+            "plain": {
+              "score": 4,
+              "reason": "Plain and specific."
+            },
+            "benefit": {
+              "score": 3,
+              "reason": "Describes the fix more than what customers get from it."
+            },
+            "accurate": {
+              "score": 4,
+              "reason": "Matches the changelog."
+            },
+            "length": {
+              "score": 4,
+              "reason": "Short and complete."
+            }
+          },
+          "input_tokens": 111,
+          "output_tokens": 176,
+          "judge_input_tokens": 697,
+          "judge_output_tokens": 218
+        }
+      ]
+    },
+    "timezone-fix": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Shifts at locations in Arizona were showing one hour off because Arizona doesn't use daylight saving time. This has been fixed, and existing shifts were corrected automatically, so you don't need to do anything.",
+          "scores": {
+            "plain": {
+              "score": 4,
+              "reason": "No jargon about cached offsets."
+            },
+            "benefit": {
+              "score": 3,
+              "reason": "Explains the bug before saying shifts are now right."
+            },
+            "accurate": {
+              "score": 4,
+              "reason": "Accurate, including the automatic correction."
+            },
+            "length": {
+              "score": 3,
+              "reason": "A bit long for a small fix."
+            }
+          },
+          "input_tokens": 128,
+          "output_tokens": 192,
+          "judge_input_tokens": 730,
+          "judge_output_tokens": 218
+        }
+      ]
+    },
+    "faster-dashboards": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Large Insight dashboards with more than 20 tiles now load faster. In our tests, typical load time dropped from about 9 seconds to about 3 seconds. Smaller dashboards are unchanged.",
+          "scores": {
+            "plain": {
+              "score": 4,
+              "reason": "No mention of query layers or caching."
+            },
+            "benefit": {
+              "score": 4,
+              "reason": "Says what gets faster and by how much."
+            },
+            "accurate": {
+              "score": 4,
+              "reason": "Numbers match the changelog."
+            },
+            "length": {
+              "score": 4,
+              "reason": "Short."
+            }
+          },
+          "input_tokens": 113,
+          "output_tokens": 185,
+          "judge_input_tokens": 707,
+          "judge_output_tokens": 218
+        }
+      ]
+    },
+    "mostly-internal": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "We made improvements to how FlowOS sends notifications behind the scenes. As a result, shift reminder notifications now arrive faster.",
+          "scores": {
+            "plain": {
+              "score": 3,
+              "reason": "'Behind the scenes' is vague, though not jargon."
+            },
+            "benefit": {
+              "score": 3,
+              "reason": "Mentions faster reminders only at the end."
+            },
+            "accurate": {
+              "score": 3,
+              "reason": "Says 'faster' without the 1 minute versus 5 minutes detail."
+            },
+            "length": {
+              "score": 3,
+              "reason": "Short, but the first sentence says nothing useful."
+            }
+          },
+          "input_tokens": 117,
+          "output_tokens": 173,
+          "judge_input_tokens": 700,
+          "judge_output_tokens": 218
+        }
+      ]
+    },
+    "old-app-retirement": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "The FlowOS Classic mobile app will stop working on January 31. Everything it does is available in the current FlowOS app. From December 1, Classic users will see a banner with a download link.",
+          "scores": {
+            "plain": {
+              "score": 4,
+              "reason": "Plain and direct."
+            },
+            "benefit": {
+              "score": 4,
+              "reason": "Tells customers what to do and when."
+            },
+            "accurate": {
+              "score": 4,
+              "reason": "Dates match the changelog."
+            },
+            "length": {
+              "score": 3,
+              "reason": "Three sentences, a little long for the page."
+            }
+          },
+          "input_tokens": 124,
+          "output_tokens": 188,
+          "judge_input_tokens": 721,
+          "judge_output_tokens": 218
+        }
+      ]
+    }
+  }
+}
