@@ -1,56 +1,56 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, pill, verdict_icon, notice %}
-{% block title %}{% if comp and comp.complete %}{{ comp.verdict }}: {% endif %}Compare | {% endblock %}
+{% from "_macros.html" import icon, pill, verdict_icon, notice, kind_tag, team_tag, deal_badge, nudge_box %}
+{% block title %}{% if comp and comp.complete %}{{ comp.verdict }}: {% endif %}See results | {% endblock %}
 {% block content %}
-<h1 class="page-title">Compare two versions</h1>
+<h1 class="page-title">See results</h1>
 
 <details class="card compare-form" open data-collapse-on-phone>
   <summary>
-    <span><strong>{{ suite.name }}</strong><br><span class="muted small">{{ current_id }} compared with {{ new_id }}</span></span>
+    <span><strong>{{ suite.name }}</strong><br><span class="muted small">{{ vname(new_id)|capitalize }} compared with {{ vname(current_id) }}</span></span>
     <span class="fake-btn" aria-hidden="true">Change</span>
-    <span class="visually-hidden">Change what is compared</span>
+    <span class="visually-hidden">Change what is shown</span>
   </summary>
   <div class="form-body">
-    <form method="get" action="/">
+    <form method="get" action="/results">
       <div class="compare-grid">
         <div class="field">
-          <label for="f-suite">Prompt suite</label>
+          <label for="f-suite">Prompt</label>
           <select id="f-suite" name="suite" data-autosubmit-suite>
-            {% for s in suites %}<option value="{{ s.id }}"{% if s.id == suite.id %} selected{% endif %}>{{ s.name }}</option>{% endfor %}
+            {% for s in suites %}<option value="{{ s.id }}"{% if s.id == suite.id %} selected{% endif %}>{{ s.name }}{% if s.team %} ({{ s.team }}){% endif %}</option>{% endfor %}
           </select>
         </div>
         <div class="field">
-          <label for="f-current">Current version</label>
+          <label for="f-current">The version your team uses now</label>
           <select id="f-current" name="current">
-            {% for v in versions %}<option value="{{ v.id }}"{% if v.id == current_id %} selected{% endif %}>{{ v.id }}: {{ v.summary }}</option>{% endfor %}
+            {% for v in versions %}<option value="{{ v.id }}"{% if v.id == current_id %} selected{% endif %}>Version {{ v.number }}: {{ v.summary }}</option>{% endfor %}
           </select>
         </div>
         <div class="field">
-          <label for="f-new">New version</label>
+          <label for="f-new">The version you're trying</label>
           <select id="f-new" name="new">
-            {% for v in versions %}<option value="{{ v.id }}"{% if v.id == new_id %} selected{% endif %}>{{ v.id }}: {{ v.summary }}</option>{% endfor %}
+            {% for v in versions %}<option value="{{ v.id }}"{% if v.id == new_id %} selected{% endif %}>Version {{ v.number }}: {{ v.summary }}</option>{% endfor %}
           </select>
         </div>
-        <button class="btn" type="submit">Run comparison</button>
+        <button class="btn" type="submit">See results</button>
       </div>
     </form>
-    <p class="paste-link">Have a change in mind? <a href="/test?suite={{ suite.id }}">Paste in a new version to test</a></p>
+    <p class="paste-link">Have a change in mind? <a href="/test?suite={{ suite.id }}">Test a change to this prompt</a></p>
   </div>
 </details>
 
 {% if example %}
-{{ notice("This is the saved example: version 4 of the follow-up email, replayed from recorded results through the same checks, scoring and verdict as live mode. Nothing new was saved.", "info") }}
+{{ notice("This is the saved example: version 4 of the follow-up email, replayed from sample results through the same quick checks, scoring and verdict as live mode. Nothing new was saved.", "info") }}
 {% endif %}
 
 {% if error %}
 {{ notice(error, "error") }}
 {% elif current_id == new_id %}
-{{ notice("Pick two different versions to compare. Or paste in a new version to test it against this one.", "info") }}
+{{ notice("Pick two different versions to see results. Or test a change against this one.", "info") }}
 {% elif not comp.complete %}
 <div class="card">
   <h2>Some results are missing</h2>
   {% for vid, cases in comp.missing.items() if cases %}
-  <p>{{ vid }} has no saved results yet for {{ cases|length }} test case{{ 's' if cases|length != 1 }}: {{ cases|map(attribute='name')|join(', ') }}.</p>
+  <p>{{ vname(vid)|capitalize }} has no saved results yet for {{ plural(cases|length, 'example') }}: {{ cases|map(attribute='name')|join(', ') }}.</p>
   {% endfor %}
   {% if settings.is_live %}
   <form method="post" action="/run">
@@ -58,10 +58,10 @@
     <input type="hidden" name="current" value="{{ current_id }}">
     <input type="hidden" name="new" value="{{ new_id }}">
     <p class="muted">{{ estimate }}</p>
-    <button class="btn" type="submit">Run the missing tests</button>
+    <button class="btn" type="submit">Run the missing examples</button>
   </form>
   {% else %}
-  <p class="muted">Demo mode only has recorded results, so these tests can't be run here.</p>
+  <p class="muted">The demo only has sample results, so these examples can't be run here.</p>
   {% endif %}
 </div>
 {% else %}
@@ -70,19 +70,33 @@
   <div class="verdict-head">
     {{ verdict_icon(comp.verdict_key) }}
     <div>
-      <p class="eyebrow">Verdict for {{ new_id }} compared with {{ current_id }}</p>
+      <p class="eyebrow">{{ vname(new_id)|capitalize }}, the version you're trying, compared with {{ vname(current_id) }}, the version your team uses now</p>
       <h2 id="verdict-title">{{ comp.verdict }}</h2>
     </div>
   </div>
   <p class="explain">{{ comp.explanation }}</p>
+  {% if comp.deal_breaker_callout %}
+  <p class="callout callout-deal">{{ icon('block') }}<span>{{ comp.deal_breaker_callout }}</span></p>
+  {% endif %}
+  {% if comp.overridden_rows %}
+  <div class="callout callout-override">{{ icon('person') }}
+    {% if comp.overridden_rows|length == 1 %}
+    <p>{{ comp.overrides_line }}</p>
+    {% else %}
+    <div><p>{{ plural(comp.overridden_rows|length, 'example') }} overridden by you:</p>
+      <ul>{% for r in comp.overridden_rows %}<li>{{ r.case.name }}: {{ r.override.reason }}</li>{% endfor %}</ul></div>
+    {% endif %}
+  </div>
+  {% endif %}
   <dl class="counts">
-    <div class="count count-worse"><dt>{{ icon('down') }}Worse</dt><dd>{{ comp.worse }}</dd></div>
-    <div class="count count-better"><dt>{{ icon('up') }}Better</dt><dd>{{ comp.better }}</dd></div>
-    <div class="count count-same"><dt>{{ icon('right') }}No clear change</dt><dd>{{ comp.same }}</dd></div>
+    <div class="count count-worse"><dt>{{ icon('down') }}Got worse</dt><dd>{{ comp.worse }}</dd></div>
+    <div class="count count-better"><dt>{{ icon('up') }}Got better</dt><dd>{{ comp.better }}</dd></div>
+    <div class="count count-same"><dt>{{ icon('right') }}About the same</dt><dd>{{ comp.same }}</dd></div>
   </dl>
-  <p class="averages">Average score: {{ current_id }} <span class="score">{{ fmt(comp.avg_current) }}</span>, {{ new_id }} <span class="score">{{ fmt(comp.avg_new) }}</span> (out of 5)</p>
+  <p class="averages">Average score: version {{ comp.current.number }} <span class="score">{{ fmt(comp.avg_current) }}</span>, version {{ comp.new.number }} <span class="score">{{ fmt(comp.avg_new) }}</span> (out of 5)</p>
+  <p class="evidence">{{ comp.evidence_line }}</p>
   <div class="verdict-actions">
-    {% if comp.worse %}<a class="text-link" href="{{ base_q }}&amp;tab=cases#cases">Review the {{ comp.worse }} worse case{{ 's' if comp.worse != 1 }}</a>{% endif %}
+    {% if comp.worse %}<a class="text-link" href="{{ base_q }}&amp;tab=examples#examples">Review the {{ plural(comp.worse, 'example') }} that got worse</a>{% endif %}
     <button class="btn btn-secondary" type="button" data-copy-target="summary-text" hidden>{{ icon('copy') }}Copy summary to share</button>
     <a class="text-link" href="/summary.txt?suite={{ suite.id }}&amp;current={{ current_id }}&amp;new={{ new_id }}" download>Download summary</a>
     <span class="copy-status" role="status" aria-live="polite"></span>
@@ -90,81 +104,82 @@
   <pre id="summary-text" hidden>{{ summary }}</pre>
 </section>
 
-<nav class="tabs" aria-label="Comparison details" id="cases">
-  {% for key, label in [('cases','Cases'),('rubric','Rubric'),('changes','Prompt changes'),('details','Run details')] %}
-  <a href="{{ base_q }}&amp;tab={{ key }}#cases"{% if tab == key %} aria-current="page"{% endif %}>{{ label }}</a>
+<nav class="tabs" aria-label="Result details" id="examples">
+  {% for key, label in [('examples','Examples'),('good','What good looks like'),('changes','What changed'),('details','Behind the scenes')] %}
+  <a href="{{ base_q }}&amp;tab={{ key }}#examples"{% if tab == key %} aria-current="page"{% endif %}>{{ label }}</a>
   {% endfor %}
 </nav>
 
-{% if tab == 'cases' %}
-<h2 class="visually-hidden">Cases</h2>
-<div class="table-card table-scroll">
-<table class="stack">
-  <thead><tr>
-    <th scope="col">Test case</th><th scope="col" class="num">Current ({{ current_id }})</th><th scope="col" class="num">New ({{ new_id }})</th>
-    <th scope="col" class="num">Change</th><th scope="col">Result</th><th scope="col">Automatic checks</th>
-  </tr></thead>
-  <tbody>
+{% if tab == 'examples' %}
+<h2 class="visually-hidden">Examples</h2>
+<ul class="example-cards">
   {% for r in comp.rows %}
-  <tr>
-    <td class="first"><a class="case-name" href="/suites/{{ suite.id }}/cases/{{ r.case.id }}?current={{ current_id }}&amp;new={{ new_id }}">{{ r.case.name }}</a>{% if r.case.label %}<span class="case-label">{{ r.case.label }}</span>{% endif %}</td>
-    <td class="num score" data-label="Current ({{ current_id }})">{{ fmt(r.current_score) }}</td>
-    <td class="num score" data-label="New ({{ new_id }})">{{ fmt(r.new_score) }}</td>
-    <td class="num score {{ 'change-neg' if r.change < 0 else 'change-pos' if r.change > 0 }}" data-label="Change">{{ fmt_change(r.change) }}</td>
-    <td data-label="Result">{{ pill(r.result) }}</td>
-    <td data-label="Automatic checks" class="small">{{ r.checks_summary }}</td>
-  </tr>
+  <li class="example-card result-{{ r.result }}">
+    <div class="ec-main">
+      <p class="ec-title"><a class="case-name" href="{{ example_url(suite.id, r.case.id, current_id, new_id) }}">{{ r.case.name }}</a> {{ kind_tag(r.case) }}</p>
+      {% if r.case.label %}<p class="ec-label">{{ r.case.label }}</p>{% endif %}
+      {% for c in r.blocking_misses %}<p class="ec-deal">Missed a deal-breaker: {{ c.name }}</p>{% endfor %}
+      {% if r.override %}<p class="ec-override">{{ icon('person') }}Overridden by you. The AI reviewer said {{ result_labels[r.ai_result] }}.</p>{% endif %}
+    </div>
+    <div class="ec-side">
+      <span class="score ec-score"><span class="visually-hidden">Score went from </span>{{ fmt(r.current_score) }} to {{ fmt(r.new_score) }}</span>
+      {{ pill(r.result) }}
+    </div>
+  </li>
   {% endfor %}
-  </tbody>
-</table>
-</div>
-<p class="muted small">A case counts as worse if its score drops by {{ fmt(suite.threshold) }} or more, or if it fails an automatic check the current version passed. Smaller moves count as no clear change, because one run of each version always varies a little.</p>
+</ul>
+{% if comp.mix_line %}<p class="mix">{{ comp.mix_line }}</p>{% endif %}
+{% if nudge %}{{ nudge_box() }}{% endif %}
+<p class="muted small">An example got worse if its score clearly dropped, it failed a quick check it used to pass, or it newly missed a deal-breaker. Small moves count as about the same, because every run varies a little. Open an example to see the AI reviewer's reasons, or to disagree with it.</p>
 
-{% elif tab == 'rubric' %}
-<h2>What the judge scores</h2>
-<p class="muted">Each output is scored from 1 to 5 on every criterion.</p>
+{% elif tab == 'good' %}
+<h2>What good looks like</h2>
+<p class="muted">The AI reviewer scores every output from 1 to 5 on each quality.</p>
 <div class="table-card table-scroll">
 <table>
-  <thead><tr><th scope="col">Criterion</th><th scope="col">A 5 looks like</th><th scope="col">A 1 looks like</th></tr></thead>
+  <thead><tr><th scope="col">Quality</th><th scope="col">A 5 looks like</th><th scope="col">A 1 looks like</th></tr></thead>
   <tbody>
-  {% for c in suite.rubric %}<tr><th scope="row">{{ c.name }}</th><td>{{ c.five_looks_like }}</td><td>{{ c.one_looks_like }}</td></tr>{% endfor %}
+  {% for c in suite.rubric %}<tr><th scope="row">{{ c.name }}{% if c.deal_breaker %} {{ deal_badge() }}{% endif %}</th><td>{{ c.five_looks_like }}</td><td>{{ c.one_looks_like }}</td></tr>{% endfor %}
   </tbody>
 </table>
 </div>
-<h2>Automatic checks</h2>
+{% if suite.rubric|selectattr('deal_breaker')|list %}<p class="muted small">A deal-breaker is something the output must never get wrong. A score of {{ cutoff }} or lower on a deal-breaker blocks a rollout.</p>{% endif %}
+<h2>Quick checks</h2>
 {% if suite.checks %}
 <ul>{% for c in suite.checks %}<li>{{ c.label }}</li>{% endfor %}</ul>
-<p class="muted small">These are plain rules run by code on every output, so they cost nothing and never change their mind.</p>
-{% else %}<p class="muted">This suite has no automatic checks.</p>{% endif %}
+<p class="muted small">These are plain rules checked on every output, so they cost nothing and never change their mind.</p>
+{% else %}<p class="muted">This prompt has no quick checks.</p>{% endif %}
 
 {% elif tab == 'changes' %}
-<h2>What changed in {{ new_id }}</h2>
+<h2>What changed in {{ vname(new_id) }}</h2>
 <p><strong>{{ comp.new.title or "Note" }}.</strong> {{ comp.new.note }}</p>
-<ol class="diff" aria-label="Line by line changes from {{ current_id }} to {{ new_id }}">
+<ol class="diff" aria-label="Line by line changes from {{ vname(current_id) }} to {{ vname(new_id) }}">
   {% for kind, line in comp.diff() %}
   <li class="d-{{ kind|lower }}"><span class="tag">{{ kind }}</span><span class="line">{{ line }}</span></li>
   {% endfor %}
 </ol>
 
 {% elif tab == 'details' %}
-<h2>Run details</h2>
+<h2>Behind the scenes</h2>
 <div class="table-card table-scroll">
 <table>
   <tbody>
-    <tr><th scope="row">Mode</th><td>{{ 'Live: runs on Claude' if comp.new_info.source == 'live' else 'Demo: recorded runs replayed through the same checks and scoring' }}</td></tr>
+    <tr><th scope="row">Mode</th><td>{{ 'Live: runs on Claude' if comp.new_info.source == 'live' else 'Demo: sample results, run through the same quick checks, scoring and verdict as live mode' }}</td></tr>
     <tr><th scope="row">Model tested</th><td class="mono">{{ suite.model }}</td></tr>
-    <tr><th scope="row">Judge model</th><td class="mono">{{ comp.new_info.judge_model or settings.judge_model }}</td></tr>
-    <tr><th scope="row">Runs per case</th><td>{{ suite.repeats }}</td></tr>
-    <tr><th scope="row">Threshold</th><td>{{ fmt(suite.threshold) }} points</td></tr>
-    <tr><th scope="row">Test cases</th><td>{{ comp.rows|length }}</td></tr>
-    <tr><th scope="row">Tokens used ({{ new_id }})</th><td class="mono">{{ "{:,}".format(comp.new_info.input_tokens) }} in, {{ "{:,}".format(comp.new_info.output_tokens) }} out</td></tr>
-    <tr><th scope="row">Tokens used ({{ current_id }}, reused)</th><td class="mono">{{ "{:,}".format(comp.current_info.input_tokens) }} in, {{ "{:,}".format(comp.current_info.output_tokens) }} out</td></tr>
-    <tr><th scope="row">When {{ new_id }} ran</th><td>{{ when(comp.new_info.ran_at) }}</td></tr>
-    <tr><th scope="row">When {{ current_id }} ran</th><td>{{ when(comp.current_info.ran_at) }}</td></tr>
+    <tr><th scope="row">AI reviewer model</th><td class="mono">{{ comp.new_info.judge_model or settings.judge_model }}</td></tr>
+    <tr><th scope="row">Runs per example</th><td>{{ suite.repeats }}</td></tr>
+    <tr><th scope="row">What counts as a change</th><td>A move of half a point or more in an example's score</td></tr>
+    <tr><th scope="row">Deal-breaker missed</th><td>The AI reviewer scores a deal-breaker {{ cutoff }} or lower</td></tr>
+    <tr><th scope="row">Examples</th><td>{{ comp.rows|length }}</td></tr>
+    <tr><th scope="row">Overridden by you</th><td>{{ comp.overridden_rows|length }}</td></tr>
+    <tr><th scope="row">Tokens used ({{ vname(new_id) }})</th><td class="mono">{{ "{:,}".format(comp.new_info.input_tokens) }} in, {{ "{:,}".format(comp.new_info.output_tokens) }} out</td></tr>
+    <tr><th scope="row">Tokens used ({{ vname(current_id) }}, reused)</th><td class="mono">{{ "{:,}".format(comp.current_info.input_tokens) }} in, {{ "{:,}".format(comp.current_info.output_tokens) }} out</td></tr>
+    <tr><th scope="row">When {{ vname(new_id) }} ran</th><td>{{ when(comp.new_info.ran_at) }}</td></tr>
+    <tr><th scope="row">When {{ vname(current_id) }} ran</th><td>{{ when(comp.current_info.ran_at) }}</td></tr>
   </tbody>
 </table>
 </div>
-<p class="muted small">Tokens include the judge's calls. Costs are not shown because prices change.</p>
+<p class="muted small">Tokens include the AI reviewer's calls. Costs are not shown because prices change. Overrides change how an example counts for these two versions only; the AI reviewer's scores are never changed.</p>
 {% endif %}
 {% endif %}
 {% endblock %}

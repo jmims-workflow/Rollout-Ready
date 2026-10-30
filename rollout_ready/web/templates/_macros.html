@@ -11,32 +11,60 @@
 <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
 {%- elif name == 'info' -%}
 <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 9v5M10 6.2v.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+{%- elif name == 'block' -%}
+<svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4.2 15.8 15.8 4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+{%- elif name == 'person' -%}
+<svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="6.5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 17.5c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
 {%- elif name == 'copy' -%}
 <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false"><rect x="6.5" y="6.5" width="10" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13.5 6.5V4a1.5 1.5 0 0 0-1.5-1.5H5A1.5 1.5 0 0 0 3.5 4v9A1.5 1.5 0 0 0 5 14.5h1.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
 {%- elif name == 'dot' -%}
 <svg viewBox="0 0 14 14" aria-hidden="true" focusable="false"><circle cx="7" cy="7" r="4" fill="currentColor"/></svg>
+{%- elif name == 'pencil' -%}
+<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m13.5 6.5 4 4" stroke="currentColor" stroke-width="1.8"/></svg>
+{%- elif name == 'bars' -%}
+<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="5.5" y="10" width="3.5" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="10.5" y="5" width="3.5" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="15.5" y="12.5" width="3.5" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+{%- elif name == 'stack' -%}
+<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="4" y="4" width="16" height="5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="4" y="11.5" width="16" height="5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7 20h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+{%- elif name == 'book' -%}
+<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 6.5C10 5 7.5 4.5 4 4.5v13c3.5 0 6 .5 8 2 2-1.5 4.5-2 8-2v-13c-3.5 0-6 .5-8 2Zm0 0v13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
 {%- endif -%}
+{%- endmacro %}
+
+{% macro logo() -%}
+<svg class="brand-mark" viewBox="0 0 36 36" aria-hidden="true" focusable="false"><rect class="logo-tile" width="36" height="36" rx="9"/><path class="logo-check" d="M10.5 18.5 15.5 23.5 25.5 12.5" fill="none" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
 {%- endmacro %}
 
 {% macro verdict_icon(key) -%}
 <svg class="verdict-icon" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
 {%- if key == 'ready' -%}
-<circle cx="20" cy="20" r="18" fill="#1D5B3A"/><path d="M11.5 20.5 17.5 26.5 29 14" fill="none" stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+<circle class="vi-fill" cx="20" cy="20" r="18"/><path class="vi-mark" d="M11.5 20.5 17.5 26.5 29 14" fill="none" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
 {%- elif key == 'not-ready' -%}
-<path d="M20 3 38 35H2Z" fill="#9A5B00"/><path d="M20 14v10" stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round"/><circle cx="20" cy="29.5" r="2" fill="#FFFFFF"/>
+<path class="vi-fill" d="M20 3 38 35H2Z"/><path class="vi-mark" d="M20 14v10" stroke-width="3.4" stroke-linecap="round"/><circle class="vi-dot" cx="20" cy="29.5" r="2"/>
 {%- elif key == 'keep' -%}
-<circle cx="20" cy="20" r="18" fill="#9A3412"/><path d="M13 20h14" stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round"/>
+<circle class="vi-fill" cx="20" cy="20" r="18"/><path class="vi-mark" d="M13 20h14" stroke-width="3.4" stroke-linecap="round"/>
 {%- else -%}
-<circle cx="20" cy="20" r="18" fill="#4A5560"/><path d="M13 16.5h14M13 23.5h14" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round"/>
+<circle class="vi-fill" cx="20" cy="20" r="18"/><path class="vi-mark" d="M13 16.5h14M13 23.5h14" stroke-width="3.2" stroke-linecap="round"/>
 {%- endif -%}
 </svg>
 {%- endmacro %}
 
 {% macro pill(result) -%}
-{%- if result == 'worse' -%}<span class="pill pill-worse">{{ icon('down') }}Worse</span>
-{%- elif result == 'better' -%}<span class="pill pill-better">{{ icon('up') }}Better</span>
-{%- else -%}<span class="pill pill-same">{{ icon('right') }}No clear change</span>
+{%- if result == 'worse' -%}<span class="pill pill-worse">{{ icon('down') }}Got worse</span>
+{%- elif result == 'better' -%}<span class="pill pill-better">{{ icon('up') }}Got better</span>
+{%- else -%}<span class="pill pill-same">{{ icon('right') }}About the same</span>
 {%- endif -%}
+{%- endmacro %}
+
+{% macro kind_tag(case) -%}
+<span class="tag tag-kind tag-{{ case.kind }}">{{ case.kind_label }}</span>
+{%- endmacro %}
+
+{% macro team_tag(suite) -%}
+{%- if suite.team %}<span class="tag tag-team">{{ suite.team }}</span>{% endif -%}
+{%- endmacro %}
+
+{% macro deal_badge() -%}
+<span class="tag tag-deal">Deal-breaker</span>
 {%- endmacro %}
 
 {% macro check_mark(passed) -%}
@@ -47,4 +75,23 @@
 
 {% macro notice(text, kind='') -%}
 <div class="notice {{ kind }}" role="{{ 'alert' if kind == 'error' else 'note' }}">{{ icon('info') }}<div><p>{{ text }}</p></div></div>
+{%- endmacro %}
+
+{% macro kind_field(prefix, name, selected) -%}
+{# "What kind of example is this?" Radios with a one-line hint each. prefix keeps ids unique on the page. #}
+<fieldset class="kind-field">
+  <legend>What kind of example is this?</legend>
+  <div class="kind-options">
+    {% for key, (label, hint) in kinds.items() %}
+    <div class="kind-option">
+      <input type="radio" id="{{ prefix }}-{{ key }}" name="{{ name }}" value="{{ key }}"{% if (selected or 'everyday') == key %} checked{% endif %}>
+      <label for="{{ prefix }}-{{ key }}">{{ label }}<span class="hint">{{ hint }}</span></label>
+    </div>
+    {% endfor %}
+  </div>
+</fieldset>
+{%- endmacro %}
+
+{% macro nudge_box() -%}
+<p class="nudge" data-nudge>{{ mix_nudge }}</p>
 {%- endmacro %}

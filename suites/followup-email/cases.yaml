@@ -1,40 +1,48 @@
 - id: ridgeway-pricing
   name: Pricing question left unanswered
   label: Ridgeway Logistics
+  kind: complicated
   input: |
     Call with Dana Ortiz (Operations Director) and Sam Lee (IT), Ridgeway Logistics. Uses FlowOS for dispatch scheduling, 40 seats across 3 sites. Interested in Connect for driver messaging. Dana asked: is Connect priced per seat or per site? Sam asked: does Connect need single sign-on setup on our side? Agreed: technical walkthrough with Sam the week of November 9. Dana needs pricing before her November 15 budget meeting.
 - id: calloway-two-asks
   name: Two people, two different asks
   label: Calloway Health
+  kind: complicated
   input: |
     Call with Priya Raman (VP of Patient Access) and Marcus Webb (IT Security Lead), Calloway Health. 12 clinics, front desk teams already on FlowOS for scheduling. Evaluating Connect for front desk messaging. Priya asked: can we pilot Connect at 2 clinics before committing to all 12? Marcus asked for our security overview and whether message data is stored in the US. Priya wants a decision by the end of December. Marcus is out next week, back November 16.
 - id: brightwater-short-call
   name: Short call, one obvious next step
   label: Brightwater Foods
+  kind: everyday
   input: |
     Quick 15 minute call with Tom Alvarez (Operations Manager), Brightwater Foods. Already on FlowOS, 25 seats, 1 site. Wants to add 5 seats for seasonal schedulers starting December 1. No other questions. Agreed: I send the order form today, Tom signs by Friday so the seats are live for December 1.
 - id: harbor-point-rambling
   name: Rambling notes, no clear owner
   label: Harbor Point Credit Union
+  kind: messy
   input: |
     Harbor Point CU. Messy call, people joined late. Jen Okafor (Member Services Manager) talked mostly about branch staffing. 9 branches, maybe 10 next year. Someone from IT (Raj?) said they tried another scheduling tool in 2023 and it didn't stick because managers kept using spreadsheets. Jen really likes FlowOS shift swapping. Long tangent about the holiday rush and tellers calling out sick. Jen asked if their FlowOS trial can be extended because their board doesn't meet until January. Not sure who owns the decision, maybe the COO, Lisa Brandt, who wasn't on the call. Jen said "send me something short I can forward." Trial started October 20.
 - id: alder-finch-pause
   name: Customer asked to pause until spring
   label: Alder and Finch
+  kind: messy
   input: |
     Call with Hannah Cole (Head of Store Operations), Alder and Finch. Outdoor retailer, 6 stores. Liked the FlowOS demo, but they are in peak season and frozen on new tools until spring. Asked us to pause until March. Asked whether today's pricing will hold until then. I didn't commit to anything on price. Also asked if her store managers can keep the demo login to look around. Told her I'd check.
 - id: kestrel-trial-extension
   name: FlowOS trial extension request
   label: Kestrel Manufacturing
+  kind: everyday
   input: |
     Call with Owen Park (Plant Manager), Kestrel Manufacturing. FlowOS trial ends November 6. The night crew hasn't finished testing shift templates. Owen asked: can we extend the trial? Also asked if trial data carries over if they buy. (Yes, confirmed with Tara in support.) Owen wants to review results with his GM, Elena Ruiz, before deciding.
 - id: meridian-insight-demo
   name: Insight dashboard demo recap
   label: Meridian Freight
+  kind: everyday
   input: |
     Insight demo with Carla Nguyen (Director of Analytics) and two dispatch leads, Meridian Freight. Showed the on-time delivery dashboard and the driver utilization view. Carla asked how often dashboards refresh. The dispatch leads asked if they can get alerts on late loads. (Not today. It's on the roadmap with no date, so don't promise.) Next: Carla to share sample data by November 12 so we can build a dashboard on their own numbers.
 - id: lakeshore-no-show
   name: Follow-up after a no-show
   label: Lakeshore Dental Group
+  kind: broke_before
   input: |
     Discovery call with Dr. Amir Haddad (Owner), Lakeshore Dental Group, 4 offices, was booked for today at 10. He didn't show and hasn't replied to the reminder I sent at 10:05. He booked through our website form and wrote that hygienist double-booking is his main problem, and that he's looking at FlowOS for scheduling. I want to rebook without being pushy.

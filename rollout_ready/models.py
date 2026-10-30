@@ -14,6 +14,7 @@ class Criterion(BaseModel):
     name: str = Field(min_length=1)
     five_looks_like: str = Field(min_length=1)
     one_looks_like: str = Field(min_length=1)
+    deal_breaker: bool = False  # something the output must never get wrong
 
 
 class Check(BaseModel):
@@ -54,6 +55,7 @@ class Suite(BaseModel):
     id: str = ""
     name: str = Field(min_length=1)
     description: str = ""
+    team: str = ""  # Sales, Marketing, Partnerships ...
     who_uses_it: str = ""
     input_label: str = "What someone on the team would paste in"
     in_use: str = ""  # the version the team uses now; defaults to the newest
@@ -69,8 +71,19 @@ class Suite(BaseModel):
         ids = [c.id for c in rubric]
         dupes = sorted({i for i in ids if ids.count(i) > 1})
         if dupes:
-            raise ValueError("each rubric criterion needs its own id; repeated: " + ", ".join(dupes))
+            raise ValueError("each quality in what good looks like needs its own id; repeated: " + ", ".join(dupes))
         return rubric
+
+
+CaseKind = Literal["everyday", "messy", "complicated", "broke_before"]
+
+# What each kind is called in the app, and a one-line hint for the Add example form.
+CASE_KINDS: dict[str, tuple[str, str]] = {
+    "everyday": ("Everyday", "A typical input, the kind the team pastes in most days."),
+    "messy": ("Messy or incomplete", "Rough notes, missing details, or things out of order."),
+    "complicated": ("Complicated", "Several people, several asks, or details that are easy to mix up."),
+    "broke_before": ("Broke before", "An input where a real output went wrong in the past."),
+}
 
 
 class Case(BaseModel):
@@ -79,7 +92,12 @@ class Case(BaseModel):
     id: str = Field(min_length=1)
     name: str = Field(min_length=1)
     label: str = ""
+    kind: CaseKind = "everyday"
     input: str = Field(min_length=1)
+
+    @property
+    def kind_label(self) -> str:
+        return CASE_KINDS[self.kind][0]
 
 
 class Version(BaseModel):
@@ -130,3 +148,12 @@ class VersionResults(BaseModel):
     ran_at: str = ""
     source: Literal["recorded", "live"] = "live"
     cases: dict[str, CaseResult] = {}
+
+
+class Override(BaseModel):
+    """A person's call on one example for one pair of versions. Never changes stored scores."""
+
+    call: Literal["not_worse", "not_better", "other"]
+    result: Literal["worse", "better", "same"]
+    reason: str = Field(min_length=1, max_length=200)
+    created: str = ""

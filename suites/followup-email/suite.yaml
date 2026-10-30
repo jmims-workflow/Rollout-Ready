@@ -1,5 +1,6 @@
 name: Discovery follow-up email
 description: Turns a rep's discovery call notes into a follow-up email they can send the same day.
+team: Sales
 who_uses_it: Account executives, right after a discovery call.
 input_label: What a rep would paste in
 in_use: v2
@@ -11,10 +12,12 @@ rubric:
     name: Accurate to the notes
     five_looks_like: Every name, number, date and product claim matches the call notes or the product facts.
     one_looks_like: Gets a name, date or product fact wrong, or makes up something nobody said.
+    deal_breaker: true
   - id: answers
     name: Answers every question asked
     five_looks_like: Each question the customer asked gets a clear, correct answer, in the order they asked it.
     one_looks_like: Skips the customer's questions or brushes them off with a vague offer to help.
+    deal_breaker: true
   - id: next_step
     name: One clear next step (what, who, when)
     five_looks_like: Ends with one specific next step that says what happens, who does it and by when.

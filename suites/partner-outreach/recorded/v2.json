@@ -1,0 +1,188 @@
+{
+  "version": "v2",
+  "model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "ran_at": "2026-10-21T17:45:00Z",
+  "cases": {
+    "cobalt-reseller": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Nina,\n\nGood to meet you at the Midwest Retail Ops Summit. You mentioned your retail clients keep asking for shift scheduling, and that the tool you resell today has no mobile app. FlowOS has a mobile app built for hourly staff, so it could fill that gap for your 30 chains.\n\nResellers earn a 20 percent margin on first-year subscriptions, and a first call is 20 minutes with no commitment.\n\nCould we talk Tuesday or Wednesday next week?\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Every detail matches the notes and the partner facts."
+            },
+            "why": {
+              "score": 4,
+              "reason": "Leads with the real fit: clients asking for scheduling and a mobile app their current tool lacks."
+            },
+            "ask": {
+              "score": 5,
+              "reason": "One small ask, a 20 minute call, with two suggested days."
+            },
+            "tone": {
+              "score": 4,
+              "reason": "Warm and direct, written to Nina."
+            }
+          },
+          "input_tokens": 418,
+          "output_tokens": 126,
+          "judge_input_tokens": 842,
+          "judge_output_tokens": 204
+        }
+      ]
+    },
+    "tidewater-two-contacts": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Ben,\n\nThanks for replying to our note on LinkedIn. You mentioned hours get typed twice, once in scheduling and again in payroll. FlowOS has an open scheduling API, so approved shifts could flow straight into Tidewater Payroll, and we already share at least 40 customers who could use it.\n\nI know Grace Kim is interested in co-selling to those shared customers too. Could the three of us start with a 20 minute call on the integration, Thursday or Friday next week? No commitment.\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Right on the API, the 40 shared accounts and both contacts' interests."
+            },
+            "why": {
+              "score": 4,
+              "reason": "Leads with the integration Ben wants and the shared customers."
+            },
+            "ask": {
+              "score": 4,
+              "reason": "One 20 minute call with two suggested days, integration first as the notes asked."
+            },
+            "tone": {
+              "score": 4,
+              "reason": "Plain and specific, written to Ben with Grace in mind."
+            }
+          },
+          "input_tokens": 425,
+          "output_tokens": 133,
+          "judge_input_tokens": 850,
+          "judge_output_tokens": 209
+        }
+      ]
+    },
+    "pinecrest-booth-notes": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi,\n\nThanks for stopping by our booth. You mentioned the dental and vet clinics you support have front desk staff texting patients from personal phones. Connect is built for front desk messaging, and it has an open messaging API if you want to plug it into the tools you already manage.\n\nWould a 20 minute call on Thursday work, to see whether reselling or referrals make more sense for Pinecrest?\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Correctly says Pinecrest supports the clinics, and avoids guessing the contact's name."
+            },
+            "why": {
+              "score": 3,
+              "reason": "Picks up the texting problem but still skips his question about clinic tablets."
+            },
+            "ask": {
+              "score": 4,
+              "reason": "One 20 minute call with a day and a clear purpose."
+            },
+            "tone": {
+              "score": 3,
+              "reason": "Opens with a bare \"Hi,\" with no name, which feels cold after a face-to-face chat."
+            }
+          },
+          "input_tokens": 432,
+          "output_tokens": 114,
+          "judge_input_tokens": 839,
+          "judge_output_tokens": 214
+        }
+      ]
+    },
+    "harlow-cold": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Tess,\n\nYour September post on getting operations data out of scheduling tools stood out to me. Insight, our dashboard product, can be resold on its own, which could give Harlow Analytics a ready-made option for logistics and freight clients who need that data.\n\nResellers earn a 20 percent margin on first-year subscriptions. Would you have 20 minutes on Wednesday for a no-commitment call?\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "The blog post, Tess's name and the resale terms all match."
+            },
+            "why": {
+              "score": 3,
+              "reason": "Links Insight to her clients, but doesn't say what it would show them."
+            },
+            "ask": {
+              "score": 4,
+              "reason": "One small ask with a suggested day."
+            },
+            "tone": {
+              "score": 4,
+              "reason": "Plain and to the point."
+            }
+          },
+          "input_tokens": 439,
+          "output_tokens": 105,
+          "judge_input_tokens": 836,
+          "judge_output_tokens": 219
+        }
+      ]
+    },
+    "summit-said-no": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Jorge,\n\nWhen we spoke in March 2025, you passed on an integration because Connect had no API. That has changed: Connect has had an open messaging API since June 2026, so Summit Field Software could send messages to field techs from inside your app.\n\nWould you have 20 minutes on Tuesday or Thursday to take another look? No commitment.\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Gets the March 2025 call and the June 2026 API right, with no claim that they spoke recently."
+            },
+            "why": {
+              "score": 4,
+              "reason": "Names the exact reason he passed and that it is now fixed."
+            },
+            "ask": {
+              "score": 4,
+              "reason": "A small ask with two suggested days."
+            },
+            "tone": {
+              "score": 3,
+              "reason": "Clear, but a little abrupt for the first message in over a year."
+            }
+          },
+          "input_tokens": 446,
+          "output_tokens": 100,
+          "judge_input_tokens": 835,
+          "judge_output_tokens": 224
+        }
+      ]
+    },
+    "brightline-competitor": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Owen,\n\nOur CEO mentioned you met at dinner and that Brightline's manufacturing clients want better reporting. Insight can be resold on its own, so it could sit alongside ShiftBay rather than replace it.\n\nResellers earn a 20 percent margin on first-year subscriptions. Would a short call work sometime next week to see if Insight fits what your clients are asking for?\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Every detail matches, and it is careful not to pitch FlowOS."
+            },
+            "why": {
+              "score": 4,
+              "reason": "Leads with the reporting gap and makes clear Insight sits alongside ShiftBay."
+            },
+            "ask": {
+              "score": 3,
+              "reason": "\"A short call sometime next week\" has no length or day."
+            },
+            "tone": {
+              "score": 4,
+              "reason": "Plain and respectful."
+            }
+          },
+          "input_tokens": 453,
+          "output_tokens": 103,
+          "judge_input_tokens": 840,
+          "judge_output_tokens": 229
+        }
+      ]
+    }
+  }
+}

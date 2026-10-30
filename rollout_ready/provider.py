@@ -38,6 +38,7 @@ class DraftedCriterion(BaseModel):
     name: str
     five_looks_like: str
     one_looks_like: str
+    deal_breaker: bool = Field(default=False, description="True if the output must never get this wrong")
 
 
 class DraftReply(BaseModel):

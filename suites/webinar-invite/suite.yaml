@@ -1,0 +1,37 @@
+name: Webinar invite email
+description: Turns an event brief into an invite email for a Northstar webinar on Insight dashboards.
+team: Marketing
+who_uses_it: The field marketing team, for invite emails to customers and prospects.
+input_label: What a marketer would paste in (the event brief)
+in_use: v2
+model: claude-sonnet-5-5
+repeats: 1
+threshold: 0.5
+rubric:
+  - id: details
+    name: Event details are right
+    five_looks_like: Date, time, time zone, title and speakers all match the brief exactly.
+    one_looks_like: Gets the date, time, time zone or a speaker wrong, or leaves one out.
+    deal_breaker: true
+  - id: value
+    name: Says what attendees will get
+    five_looks_like: Names one or two concrete things the reader will learn, in words this audience uses.
+    one_looks_like: Generic hype, or promises things the brief does not mention.
+  - id: cta
+    name: Clear way to register
+    five_looks_like: One clear line to register, with the link from the brief, where the reader is ready to act.
+    one_looks_like: No link, several competing asks, or the link buried in the text.
+  - id: length
+    name: Short enough to read
+    five_looks_like: Readable in under 30 seconds, with nothing to cut.
+    one_looks_like: Long and padded, or so short the reader can't tell what the event is.
+checks:
+  - type: max_words
+    value: 120
+    label: Under 120 words
+  - type: must_contain_any
+    value: [events.northstar.example]
+    label: Includes the registration link
+  - type: must_not_contain
+    value: ["\u2014"]
+    label: No em dashes

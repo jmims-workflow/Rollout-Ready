@@ -1,42 +1,65 @@
 {% extends "base.html" %}
-{% block title %}How scoring works | {% endblock %}
+{% block title %}How it works | {% endblock %}
 {% block content %}
-<h1 class="page-title">How scoring works</h1>
-<p class="lede">Rollout Ready runs your new version on a small set of saved test inputs, scores every output, and compares it with the version your team uses today.</p>
+<h1 class="page-title">How it works</h1>
+<p class="lede">A 2 minute read on how Rollout Ready decides whether a prompt change is ready for your team.</p>
 
 <section class="card">
-  <h2>1. Averages hide problems</h2>
-  <p>The verdict looks at how many test cases got worse, not at the average score. A change can lift the average while quietly breaking the cases you care about.</p>
-  <p>In the example, version 3 of the follow-up email raised the average from 3.6 to 3.9, but two emails stopped answering the customer's questions. So the verdict is "Not ready to roll out."</p>
+  <h2>What the app does</h2>
+  <p>A prompt change can look fine when you try it once. Rollout Ready runs the version you're trying on a small set of saved examples, scores every output, and compares it with the version your team uses now. You get one answer, and a list of the examples that got worse.</p>
+  <p>An example is only an input: what someone on your team would paste in. Nobody writes the ideal answer.</p>
+</section>
+
+<section class="card">
+  <h2>How the AI reviewer scores</h2>
+  <p>The AI reviewer is Claude. It reads one output at a time and scores it from 1 to 5 on each quality in what good looks like, with a one-sentence reason for every score. An example's score is the average of those.</p>
+  <p>It scores blind: it is never told which version wrote the output, and it never sees the other version's output, so it can't take sides. Quick checks run too: plain rules like a word limit, which are free and always give the same answer.</p>
+</section>
+
+<section class="card">
+  <h2>Why one broken example matters more than the average</h2>
+  <p>A change can lift the average while quietly breaking the examples you care about. In the demo, version 3 of the follow-up email raised the average from 3.6 to 3.9, but two emails stopped answering the customer's questions. So the answer is "Not ready to roll out."</p>
+  <p>Each example is marked:</p>
   <ul>
-    <li><strong>Worse:</strong> the score dropped by 0.5 or more, or an automatic check that used to pass now fails.</li>
-    <li><strong>Better:</strong> the score rose by 0.5 or more, or a check that used to fail now passes.</li>
-    <li><strong>No clear change:</strong> anything smaller. One run always varies a little.</li>
+    <li><strong>Got worse:</strong> its score dropped by half a point or more, it fails a quick check it used to pass, or it newly misses a deal-breaker.</li>
+    <li><strong>Got better:</strong> its score rose by half a point or more, or it passes a quick check it used to fail.</li>
+    <li><strong>About the same:</strong> anything smaller. Every run varies a little, so small moves don't count.</li>
   </ul>
-  <p>Then:</p>
+  <p>Then the answer is:</p>
   <ul>
-    <li>Nothing worse and at least one better: <strong>Ready to roll out</strong>.</li>
-    <li>Nothing worse and nothing better: <strong>No clear difference</strong>.</li>
-    <li>Some worse, but more cases better than worse: <strong>Not ready to roll out</strong>. Fix the worse cases first.</li>
-    <li>Some worse, and no more better than worse: <strong>Keep the current version</strong>.</li>
+    <li>Nothing got worse and at least one got better: <strong>Ready to roll out</strong>, unless a deal-breaker is missed.</li>
+    <li>Nothing got worse or better: <strong>No clear difference</strong>.</li>
+    <li>Some got worse, but more got better: <strong>Not ready to roll out</strong>. Fix the ones that got worse first.</li>
+    <li>Some got worse, and no more got better: <strong>Keep the current version</strong>.</li>
   </ul>
 </section>
 
 <section class="card">
-  <h2>2. Test cases are cheap</h2>
-  <p>A test case is only an input: what someone on your team would paste in. Nobody has to write the ideal answer. Six to eight cases is plenty, as long as they include the hard ones.</p>
-  <p>A good habit: when a real output goes wrong, add that input as a test case, with names and details changed.</p>
+  <h2>Deal-breakers</h2>
+  <p>Some qualities matter more than the rest: getting the facts right, or answering every question. Mark those as deal-breakers. If the AI reviewer scores a deal-breaker {{ cutoff }} or lower on any example, the version you're trying can't be "Ready to roll out", whatever the average says. If it newly misses one, that example counts as Got worse.</p>
+  <p>Most prompts have one or two deal-breakers. If everything is a deal-breaker, nothing is.</p>
 </section>
 
 <section class="card">
-  <h2>3. Two kinds of scoring</h2>
-  <p><strong>Automatic checks</strong> are plain rules run by code, like a word limit, words that must not appear, or words that must. They are free, instant and always give the same answer.</p>
-  <p><strong>The judge</strong> is Claude, scoring each part of what good looks like from 1 to 5 with a one-sentence reason. A case's score is the average of those scores.</p>
+  <h2>Why you can disagree with the AI reviewer</h2>
+  <p>The AI reviewer is a model, and it can be wrong. You know your customers and your team. On any example, choose "I disagree with the AI reviewer", say what your call is, and give a one-line reason.</p>
+  <p>Your call changes how that example counts for those two versions only, and the answer is worked out again. The AI reviewer's scores are never changed, and the result says which examples you overrode and why, so anyone you share it with can see.</p>
 </section>
 
 <section class="card">
-  <h2>4. Blind, independent judging</h2>
-  <p>The judge scores one output at a time. It is never told which version wrote it, and never sees the other version's output, so it can't take sides. Because each output is scored on its own, saved scores can be reused: only your new version needs to run.</p>
-  <p class="muted small">The judge is a model and can be wrong, so read the reasons on any case that got worse before you decide.</p>
+  <h2>What a good example mix looks like</h2>
+  <p>Most prompts work on everyday inputs. They break on the hard ones. Six to eight examples is plenty if they include:</p>
+  <ul>
+    <li><strong>Everyday:</strong> a typical input, the kind the team pastes in most days.</li>
+    <li><strong>Messy or incomplete:</strong> rough notes, missing details, or things out of order.</li>
+    <li><strong>Complicated:</strong> several people, several asks, or details that are easy to mix up.</li>
+    <li><strong>Broke before:</strong> an input where a real output went wrong. When that happens, add it, with names and details changed.</li>
+  </ul>
+</section>
+
+<section class="card">
+  <h2>How much a result proves</h2>
+  <p>Every result says how many examples it is based on, and reminds you: even when a version is ready, spot-check real outputs in its first week.</p>
+  <p>Six to eight good examples catch most breakages. They can't prove a prompt will never break, because your team will paste in things nobody thought to test. Rollout Ready makes a change much safer, not risk-free.</p>
 </section>
 {% endblock %}

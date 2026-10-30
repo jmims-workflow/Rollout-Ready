@@ -1,0 +1,36 @@
+- id: cobalt-reseller
+  name: Warm intro from a conference
+  label: Cobalt Workplace Partners
+  kind: everyday
+  input: |
+    Met Nina Patel (Partner Director) at the Midwest Retail Ops Summit on October 22. Cobalt Workplace Partners resells workforce tools to about 30 small retail chains in Ohio and Indiana. Nina said their clients keep asking for shift scheduling, and the tool they resell today has no mobile app. She asked me to send something after the event. Want: a first call about reselling FlowOS.
+- id: tidewater-two-contacts
+  name: Two contacts, two different interests
+  label: Tidewater Payroll
+  kind: complicated
+  input: |
+    Tidewater Payroll, payroll software for about 2,000 mid-size employers. Two contacts. Ben Alvarez (Head of Product) wants approved FlowOS shifts to flow into payroll so hours don't get typed twice. Grace Kim (VP of Sales) is more interested in co-selling to shared customers. We overlap on at least 40 accounts (from our CRM). Ben is the one who replied to our LinkedIn message. Want: one call with both, integration first.
+- id: pinecrest-booth-notes
+  name: Rough notes from a booth chat
+  label: Pinecrest IT Services
+  kind: messy
+  input: |
+    booth chat, loud. Mark? Mike? Dolan, Pinecrest IT Services (owner?). they run IT for ~25 dental and vet clinics. said clinic front desks text patients from personal phones and he hates it. asked if Connect works on clinic tablets, I said I'd check. didn't get his email, have card somewhere. maybe reseller, maybe just referrals. follow up this week
+- id: harlow-cold
+  name: Cold outreach, no prior contact
+  label: Harlow Analytics
+  kind: everyday
+  input: |
+    Harlow Analytics, a 15 person reporting consultancy in Denver. Builds reporting for logistics and freight companies. Their blog post from September says clients struggle to get operations data out of scheduling tools. Contact: Tess Morgan, Managing Partner (from their website). No prior contact. Want: explore reselling Insight to their clients.
+- id: summit-said-no
+  name: Partner who said no last year
+  label: Summit Field Software
+  kind: broke_before
+  input: |
+    Summit Field Software, a field service app for HVAC and plumbing companies. Talked to Jorge Ruiz (VP of Partnerships) in March 2025. He passed because Connect had no API at the time. Connect has had an open messaging API since June 2026. Last time our draft said "as we discussed last month", which was wrong. Haven't spoken since March 2025. Want: reopen the integration conversation.
+- id: brightline-competitor
+  name: Reseller already selling a competitor
+  label: Brightline Systems Group
+  kind: complicated
+  input: |
+    Brightline Systems Group resells a competing scheduling tool, ShiftBay, to about 60 manufacturing plants. Contact: Owen Clarke (Director of Alliances). They are not looking to replace ShiftBay. Owen told our CEO at a dinner last week that their clients want better reporting. Don't pitch FlowOS. Want: a call about reselling Insight alongside ShiftBay.

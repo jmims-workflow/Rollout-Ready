@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rollout-ready"
-version = "0.1.0"
+version = "2.0.0"
 description = "Test a prompt change before your team sees it."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -17,6 +17,7 @@ dependencies = [
     "typer>=0.12",
     "pyyaml>=6.0",
     "pydantic>=2.7",
+    "itsdangerous>=2.1",
 ]
 
 [project.optional-dependencies]

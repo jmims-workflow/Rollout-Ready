@@ -1,4 +1,4 @@
-"""The judge: scores one output at a time against the rubric.
+"""The judge (the "AI reviewer" in the app): scores one output at a time against the rubric.
 
 It sees the rubric, the test input and the output. It is never told
 which version wrote the output, and never sees the other version's output.
@@ -19,7 +19,9 @@ Judge only what is on the page. Do not guess who or what wrote it."""
 
 DRAFT_SYSTEM = """You help the owner of a team prompt describe what a good output looks like.
 
-Read the prompt and the sample inputs. Draft 3 to 5 criteria a reviewer could score from 1 to 5. Each has a short name, one sentence on what a 5 looks like and one sentence on what a 1 looks like. Be specific to this prompt's job. Use plain words a non-engineer would use. Do not use em dashes."""
+Read the prompt and the sample inputs. Draft 3 to 5 qualities a reviewer could score from 1 to 5. Each has a short name, one sentence on what a 5 looks like and one sentence on what a 1 looks like. Be specific to this prompt's job. Use plain words a non-engineer would use. Do not use em dashes.
+
+Mark one or two qualities as deal-breakers: things the output must never get wrong, such as facts, names, dates or answering what was asked. Most prompts have one or two. Leave style and length qualities as not deal-breakers."""
 
 
 def _escape(text: str) -> str:
