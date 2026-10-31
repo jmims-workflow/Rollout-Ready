@@ -64,6 +64,8 @@ p { margin: 0 0 .75rem; }
   position: absolute !important; width: 1px; height: 1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap;
 }
+/* Spam trap: off screen for everyone, including screen readers (aria-hidden in the markup). */
+.hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
 
 .wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
 

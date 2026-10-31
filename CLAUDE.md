@@ -41,7 +41,7 @@ pytest
 rollout run followup-email --current v2 --new v3   # exits 1 (Not ready)
 ```
 
-Live mode: `ROLLOUT_MODE=live` plus `ANTHROPIC_API_KEY`. Screenshots: run the app, then `node scripts/screenshots.js`.
+Live mode: `ROLLOUT_MODE=live` plus `ANTHROPIC_API_KEY`. Public live mode adds `ROLLOUT_PUBLIC=true` (see below). Screenshots: run the app, then `node scripts/screenshots.js`.
 
 ## Layout
 
@@ -51,6 +51,7 @@ Live mode: `ROLLOUT_MODE=live` plus `ANTHROPIC_API_KEY`. Screenshots: run the ap
 - `rollout_ready/provider.py` the only module that calls a model (Claude via `messages.parse`)
 - `rollout_ready/judge.py` judge and criteria-drafter prompts
 - `rollout_ready/runner.py` live runs (only missing results) and background jobs
+- `rollout_ready/public.py` public live mode: per-visitor `SessionStore`, shared demo results cache, usage limits, Origin check
 - `rollout_ready/storage.py` suite files: `suites/<id>/suite.yaml, cases.yaml, versions/vN.md, recorded/, runs/` (live overrides in `runs/overrides.json`)
 - `rollout_ready/web/` FastAPI app, Jinja2 templates, plain CSS, small vanilla JS. Start screen at `/`; old URLs `/suites` and `/scoring` redirect.
 - Demo prompts: `followup-email` (Sales, featured v2 to v3), `partner-outreach` (Partnerships), `webinar-invite` (Marketing).
@@ -67,6 +68,18 @@ Live mode: `ROLLOUT_MODE=live` plus `ANTHROPIC_API_KEY`. Screenshots: run the ap
 - Overrides replace one example's result for one pair of versions, never change stored scores, and lift that example's deal-breaker block. Live: files; demo: signed session cookie.
 - Example kinds: everyday, messy, complicated, broke_before. Nudge when there are no messy or complicated examples.
 - Show scores to one decimal place. Demo numbers are pinned by `tests/test_demo_data.py`; change demo data only if those still pass.
+
+## Public live mode (ROLLOUT_PUBLIC=true, plus live mode and a key)
+
+- Without `ROLLOUT_PUBLIC`, local live mode must behave exactly as before: no limits, no Origin check, no honeypot, files under `suites/`.
+- Every request uses `store_for(request)`, never the shared `store` directly. In public mode that is a `SessionStore` over `ROLLOUT_DATA_DIR/sessions/<sid>/`: demo prompts are read from `suites/` and copied into the session folder on first change. Never write to `suites/` in public mode.
+- Privacy: anything a visitor writes or adds (versions, examples, edits, new prompts, results, overrides, jobs) is visible only to that session. Session id is in the signed cookie, ends with the browser and is refused after 24 hours; old folders are pruned.
+- Shared cache (`ROLLOUT_DATA_DIR/shared/`) holds only real results for an unchanged demo version on an unchanged demo example with the demo rubric and model. Nothing a visitor wrote may ever go there.
+- Comparisons are all real or all sample, never mixed. Public visitors see the demo's sample comparison when real results are incomplete and sample results are complete.
+- Limits: `ROLLOUT_MAX_RUNS_PER_SESSION` (3), `ROLLOUT_MAX_RUNS_PER_IP_PER_DAY` (5, first `X-Forwarded-For` address, stored hashed), `ROLLOUT_MAX_RUNS_PER_DAY` (10). A run is a test, "Run the missing examples", saving a new prompt, or "Suggest qualities for me". At most 8 examples per test, 5,000 characters per prompt or example. Check limits after form validation and before any call; a refused run makes no calls. Sample pages must keep working when limits are used up.
+- Spam: the honeypot field (`website`) on every form that can call Claude; if filled, show a normal page and make no calls. POSTs must pass the Origin check.
+- Copy: "Your tests are private to you and last until you close this browser or for 24 hours. Don't paste anything confidential." on Test a change, Your prompts and Add a new prompt. "N of 3 live tests left today." on Test a change. Limit message: "Today's live tests are used up. Try again tomorrow, or explore the sample results."
+- Deploy with `--max-instances 1` and the key in Secret Manager. `tests/test_public.py` covers all of this.
 
 ## Project rules
 

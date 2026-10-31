@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, notice, kind_tag, team_tag, nudge_box %}
+{% from "_macros.html" import icon, notice, kind_tag, team_tag, nudge_box, honeypot %}
 {% block title %}Test a change | {% endblock %}
 {% block content %}
 <h1 class="page-title">Test a change</h1>
@@ -8,7 +8,8 @@
 {% if not settings.is_live %}
 {{ notice("This demo can't call Claude, so it runs one saved example: version 4 of the follow-up email, compared with version 2. In live mode you would paste your own version here.", "info") }}
 {% endif %}
-{% if error %}{{ notice(error, "error") }}{% endif %}
+{% if settings.is_public %}{{ notice(private_note, "info") }}{% endif %}
+{% if error %}{{ notice(error, "error") }}{% elif used_up %}{{ notice(used_up_note, "info") }}{% elif examples_problem %}{{ notice(examples_problem, "error") }}{% endif %}
 
 <form class="card" method="get" action="/test">
   <div class="compare-grid test-grid">
@@ -31,6 +32,7 @@
 <form method="post" action="/test" id="run-form" data-run-form>
   <input type="hidden" name="suite" value="{{ suite.id }}">
   <input type="hidden" name="against" value="{{ against.id }}">
+  {{ honeypot("t-website") }}
   <div class="two-col">
     <section class="panel" aria-labelledby="against-h">
       <h2 id="against-h">{{ "The version your team uses now" if against.id == in_use else "The version you're comparing with" }}</h2>
@@ -40,10 +42,10 @@
     <section class="panel">
       <div class="field">
         <label for="prompt_text">Paste the version you're trying
-          <span class="hint">Paste exactly what you would put in your custom GPT, Gem, Claude Project or shared doc.</span></label>
+          <span class="hint">{% if prefilled %}Edit this or paste your own, then run it.{% else %}Paste exactly what you would put in your custom GPT, Gem, Claude Project or shared doc.{% endif %}</span></label>
         <textarea id="prompt_text" name="prompt_text" class="prompt" required
           {% if not settings.is_live %}readonly{% endif %} aria-describedby="limit-hint">{{ prompt_text }}</textarea>
-        <span id="limit-hint" class="hint">Up to 20,000 characters.</span>
+        <span id="limit-hint" class="hint">Up to {{ "{:,}".format(settings.max_chars) }} characters.</span>
       </div>
     </section>
   </div>
@@ -73,7 +75,8 @@
 
 <div class="card">
   <p data-estimate>{{ estimate }}</p>
-  <button class="btn" type="submit" form="run-form" data-run-button>{{ 'Run the test' if settings.is_live else 'Run the saved example' }}</button>
+  {% if runs_line %}<p class="muted" data-runs-left>{{ runs_line }}</p>{% endif %}
+  <button class="btn" type="submit" form="run-form" data-run-button{% if used_up %} disabled{% endif %}>{{ 'Run the test' if settings.is_live else 'Run the saved example' }}</button>
   <p class="progress-text" role="status" aria-live="polite" data-run-status></p>
 </div>
 {% endblock %}

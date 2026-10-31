@@ -103,6 +103,7 @@ class Job:
     message: str = "Starting"
     error: str | None = None
     finished: bool = False
+    owner: str = ""  # the visitor's session in public live mode
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
     @property
@@ -114,8 +115,9 @@ class JobManager:
     def __init__(self):
         self.jobs: dict[str, Job] = {}
 
-    def start(self, title: str, done_url: str, work: Callable[[Callable[[int, int, str], None]], None]) -> Job:
-        job = Job(id=uuid.uuid4().hex[:12], title=title, done_url=done_url)
+    def start(self, title: str, done_url: str, work: Callable[[Callable[[int, int, str], None]], None],
+              owner: str = "") -> Job:
+        job = Job(id=uuid.uuid4().hex, title=title, done_url=done_url, owner=owner)
         self.jobs[job.id] = job
 
         def progress(done: int, total: int, message: str) -> None:

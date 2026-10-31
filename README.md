@@ -108,7 +108,7 @@ Live mode saves new prompts, versions, examples, results and overrides under `su
 
 If `ROLLOUT_MODE=live` is set but there is no key, the app falls back to demo mode and says so on every page. The key is read only on the server. It is never sent to the browser, logged or committed (`.env` is in `.gitignore`). `ROLLOUT_SECRET_KEY` optionally signs the demo override cookie; if it is unset, a random key is made at startup.
 
-Running prompts uses API credits, so **a public deployment should stay in demo mode**.
+Running prompts uses API credits. To share a live version with people you don't know, turn on the limits in [Sharing a live version](#sharing-a-live-version); otherwise a public deployment should stay in demo mode.
 
 Note on judge settings: current Claude models and the current SDK no longer accept a temperature setting, so the AI reviewer runs with default sampling. Consistency comes from structured output (a score and reason for every criterion), anchored 5 and 1 descriptions, and the half-point threshold.
 
@@ -162,7 +162,49 @@ suites/<suite-id>/
 gcloud run deploy rollout-ready --source . --region us-east1 --allow-unauthenticated
 ```
 
-The Dockerfile serves on `PORT` (default 8080) and leaves `ROLLOUT_MODE` at `demo`. Keep it that way for a public URL. `.dockerignore` and `.gcloudignore` leave out `.env`, `runs/` and `.git`.
+The Dockerfile serves on `PORT` (default 8080) and leaves `ROLLOUT_MODE` at `demo`, which is safe for any public URL. `.dockerignore` and `.gcloudignore` leave out `.env`, `runs/` and `.git`.
+
+## Sharing a live version
+
+Set `ROLLOUT_PUBLIC=true` together with `ROLLOUT_MODE=live` and `ANTHROPIC_API_KEY` to let anyone with the link test real prompt changes on Claude, with limits. Without `ROLLOUT_PUBLIC`, live mode works exactly as described above, for one person or a trusted team.
+
+What visitors get:
+
+- The demo prompts and their sample comparisons stay visible to everyone, labeled "Sample results", so a first visit opens on the featured result.
+- **Test a change** and **Your prompts** run on Claude for real. Test a change opens with version 4 of the follow-up email as an editable starting point.
+- A visitor's test always runs both versions for real, never mixing sample and real results. Real results for the demo's own versions on the demo's own, unchanged examples contain nothing a visitor wrote, so they are cached and shared across visitors. Everything a visitor writes or adds (new versions, examples, edited examples, new prompts, their results and overrides) is private to them.
+
+Privacy: each visitor gets a random session id in a signed cookie. It ends when they close the browser and is refused after 24 hours. Their work lives in a folder for that session under `ROLLOUT_DATA_DIR` (default: a `rollout-ready` folder in the system temp directory) and is never shown to anyone else; folders older than a day are deleted. Test a change and Your prompts say so plainly and ask people not to paste anything confidential. Set `ROLLOUT_SECRET_KEY` so the cookie signature is stable.
+
+Limits (environment variables, with their defaults):
+
+| Variable | Default | What it caps |
+| --- | --- | --- |
+| `ROLLOUT_MAX_RUNS_PER_SESSION` | 3 | Live runs per visitor session |
+| `ROLLOUT_MAX_RUNS_PER_IP_PER_DAY` | 5 | Live runs per address per day (the first address in `X-Forwarded-For`, which is the visitor on Cloud Run) |
+| `ROLLOUT_MAX_RUNS_PER_DAY` | 10 | Live runs per day across all visitors |
+
+A run is one test, one "Run the missing examples", one saved new prompt (scoring version 1) or one "Suggest qualities for me". Each test runs on at most 8 examples, and each pasted prompt or example is at most 5,000 characters. When a limit is reached, visitors see "Today's live tests are used up. Try again tomorrow, or explore the sample results." and every sample page keeps working. Test a change shows what is left, for example "2 of 3 live tests left today." Days are counted in UTC. Addresses are stored only as salted hashes, in `usage.json` in the data folder.
+
+Spam protection: every form that can call Claude has a hidden field people never see. If it is filled in, the app shows a normal-looking page and makes no calls. Form posts are only accepted from the app's own pages: the `Origin` header (or `Referer`, if a browser leaves `Origin` out) must match the app's host.
+
+Deploy with one instance, so every visitor's session, folder and counts stay on one machine, and keep the API key in Google Secret Manager rather than a plain environment variable:
+
+```bash
+printf '%s' "$ANTHROPIC_API_KEY" | gcloud secrets create anthropic-api-key --data-file=-
+python -c "import secrets; print(secrets.token_urlsafe(32), end='')" | gcloud secrets create rollout-secret-key --data-file=-
+```
+
+```bash
+gcloud run deploy rollout-ready --source . --region us-east1 --allow-unauthenticated \
+  --max-instances 1 \
+  --set-env-vars ROLLOUT_MODE=live,ROLLOUT_PUBLIC=true \
+  --set-secrets ANTHROPIC_API_KEY=anthropic-api-key:latest,ROLLOUT_SECRET_KEY=rollout-secret-key:latest
+```
+
+The Cloud Run service account needs the Secret Manager Secret Accessor role on both secrets. Cloud Run keeps files in memory and resets them when the instance restarts, which also resets sessions and counts.
+
+The app's limits are a first line of defense. For a hard spending cap, pay for the API with prepaid credits and turn auto-reload off in the Claude Console: when the credits run out, calls stop, whatever the app does.
 
 ## Screenshots
 
@@ -199,5 +241,7 @@ Screenshots are made with `node scripts/screenshots.js` while the app is running
 - Demo overrides are not saved: they last for the browser session only.
 - Overrides are not yet fed back to the AI reviewer; they are a record you can use to calibrate it later.
 - Saved work does not persist on Cloud Run: the container's files reset.
-- There are no user accounts, so a live instance is for one person or a trusted team on their own machine.
+- There are no user accounts. Local live mode is for one person or a trusted team; a shared live version keeps each visitor's work private to their browser session for at most 24 hours, and it is lost when they close the browser.
+- A shared live version assumes a single instance (`--max-instances 1`). Sessions, the shared cache and the usage counts are files on that instance, so more instances would split them.
+- The limits slow down misuse but don't stop someone who keeps changing address and clearing cookies before the daily cap. The daily cap and prepaid credits are what bound the cost.
 - Demo data is fictional and hand-written (Northstar Systems, its partners and its customers are invented).
