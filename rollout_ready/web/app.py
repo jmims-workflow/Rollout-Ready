@@ -24,7 +24,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .. import config, scoring
 from ..compare import (MIX_NUDGE, Comparison, build_comparison, example_mix, load_results,
-                       needs_harder_examples, summary_text)
+                       missing_cases, needs_harder_examples, summary_text)
 from ..config import Settings, length_problem, load_settings
 from ..demo_criteria import SAMPLE_CRITERIA, SAMPLE_SUITE_NAME, SAMPLE_WHO
 from ..judge import draft_criteria
@@ -357,6 +357,15 @@ def create_app(
                                 status_code=303)
 
     # test a change ---------------------------------------------------------
+    def test_estimate(suite: Suite, cases: list[Case], against: str) -> tuple[int, str]:
+        """Examples the compared version still needs to run, and the call estimate for the whole test.
+
+        The version you're trying runs every example. The version you compare with runs any
+        example it has no real results for, which is all of them when it has only sample results.
+        """
+        against_todo = len(missing_cases(store, suite, cases, against, live=True))
+        return against_todo, estimate_sentence(len(cases) + against_todo, suite.repeats)
+
     def test_context(suite_id: str, against: str) -> dict:
         suites = ordered(store.suites())
         ids = [s.id for s in suites]
@@ -372,9 +381,11 @@ def create_app(
                    versions=versions if settings.is_live else [against_v],
                    against=against_v, in_use=use, cases=cases, error=None, prompt_text="", note="",
                    nudge=needs_harder_examples(cases), mix=example_mix(cases),
-                   estimate=estimate_sentence(len(cases), suite.repeats),
+                   against_todo=0, estimate="",
                    next_url="/test?" + urlencode({"suite": suite_id, "against": against_v.id}) + "#add-example")
-        if not settings.is_live:
+        if settings.is_live:
+            ctx["against_todo"], ctx["estimate"] = test_estimate(suite, cases, against_v.id)
+        else:
             example = store.load_version(suite_id, config.SAVED_EXAMPLE_VERSION)
             ctx.update(prompt_text=example.text, note=example.note,
                        estimate=f"The saved example replays {len(cases)} recorded results, so it takes a moment and makes no calls to Claude.")
@@ -628,8 +639,17 @@ def create_app(
         if wants_json(request):
             suite = store.load_suite(suite_id)
             cases = store.load_cases(suite_id)
+            against = str(form.get("against", ""))
+            if against:
+                try:
+                    store.load_version(suite_id, against)
+                    estimate = test_estimate(suite, cases, against)[1]
+                except SuiteError:
+                    estimate = estimate_sentence(len(cases), suite.repeats)
+            else:
+                estimate = estimate_sentence(len(cases), suite.repeats)
             return {"ok": True, "case": case.model_dump(), "kind_label": case.kind_label, "count": len(cases),
-                    "estimate": estimate_sentence(len(cases), suite.repeats),
+                    "estimate": estimate,
                     "nudge": needs_harder_examples(cases)}
         return RedirectResponse(_safe_next(str(form.get("next", "")), f"/prompts/{suite_id}?saved=1"), status_code=303)
 

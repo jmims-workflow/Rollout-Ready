@@ -34,7 +34,7 @@
   <div class="two-col">
     <section class="panel" aria-labelledby="against-h">
       <h2 id="against-h">{{ "The version your team uses now" if against.id == in_use else "The version you're comparing with" }}</h2>
-      <p class="muted small">Version {{ against.number }}: {{ against.summary }}. Its saved scores are reused, so only the version you're trying needs to run.</p>
+      <p class="muted small">Version {{ against.number }}: {{ against.summary }}. {% if not settings.is_live or not against_todo %}Its saved scores are reused, so only the version you're trying needs to run.{% elif against_todo == cases|length %}It has no real results yet, so it runs on every example too.{% else %}It has no real results for {{ plural(against_todo, 'example') }}, so those run too.{% endif %}</p>
       <pre class="prompt-text" tabindex="0" aria-label="Prompt text of version {{ against.number }}">{{ against.text }}</pre>
     </section>
     <section class="panel">

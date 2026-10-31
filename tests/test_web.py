@@ -252,7 +252,9 @@ def test_demo_overrides_last_for_the_browser_session_only(demo, demo_settings):
 
 def test_live_overrides_are_saved_next_to_the_results(live, live_settings):
     recorded = (live_settings.suites_dir / "followup-email/recorded/v3.json").read_text()
-    assert override(live, RIDGEWAY, reason="Answered in the PS.").status_code == 303
+    live.post("/run", data={"suite": "followup-email", "current": "v2", "new": "v3"})
+    wait_for_jobs(live)
+    assert override(live, RIDGEWAY, call="other", count_as="worse", reason="Answered in the PS.").status_code == 303
     path = live_settings.suites_dir / "followup-email/runs/overrides.json"
     assert '"v2:v3"' in path.read_text() and "ridgeway-pricing" in path.read_text()
     fresh = TestClient(create_app(live_settings, provider_factory=lambda s: FakeProvider()))
@@ -393,16 +395,51 @@ def test_api_key_never_reaches_the_browser(live):
         assert "test-key-not-real" not in live.get(url).text
 
 
-def test_live_mode_runs_only_the_new_version(live, live_settings):
+def test_live_mode_runs_only_what_has_no_real_results(live, live_settings):
     r = live.post("/test", data={"suite": "followup-email", "against": "v2",
                                  "prompt_text": "A brand new prompt", "note": "Try it"}, follow_redirects=False)
     assert r.status_code == 303 and r.headers["location"].startswith("/jobs/")
     wait_for_jobs(live)
-    assert live.fake.generate_calls == 8 and live.fake.judge_calls == 8
+    # v2 has only recorded demo results, so both versions run for real.
+    assert live.fake.generate_calls == 16 and live.fake.judge_calls == 16
     assert (live_settings.suites_dir / "followup-email/versions/v5.md").exists()
     page = live.get(r.headers["location"])
     assert "new=v5" in str(page.url) and page.status_code == 200
     assert "Live: runs on Claude" in page.text
+
+
+def test_behind_the_scenes_says_sample_or_real_results_for_each_version(demo, live):
+    text = page_text(demo.get(f"{FEATURED}&tab=details").text)
+    assert "Results for version 2 Sample results" in text and "Results for version 3 Sample results" in text
+    # Live mode with only recorded demo results: nothing to compare until both run for real.
+    assert "Real results" not in page_text(live.get(f"{FEATURED}&tab=details").text)
+    live.post("/run", data={"suite": "followup-email", "current": "v2", "new": "v3"})
+    wait_for_jobs(live)
+    assert live.fake.generate_calls == 16
+    text = page_text(live.get(f"{FEATURED}&tab=details").text)
+    assert "Results for version 2 Real results" in text and "Results for version 3 Real results" in text
+    assert "Sample results" not in text
+
+
+def test_test_a_change_estimate_counts_both_versions(live, live_settings):
+    # v2 has only sample results, so all 8 examples run for both versions: 32 calls.
+    text = page_text(live.get("/test?suite=followup-email&against=v2").text)
+    assert "This will make about 32 calls to Claude" in text
+    assert "It has no real results yet, so it runs on every example too." in text
+    r = live.post("/prompts/followup-email/examples",
+                  data={"name": "New one", "input": "Notes", "against": "v2"},
+                  headers={"X-Requested-With": "fetch"})
+    assert r.json()["estimate"].startswith("This will make about 36 calls to Claude")
+    # Once v2 has real results, only the version you're trying runs.
+    live.post("/run", data={"suite": "followup-email", "current": "v2", "new": "v2"})
+    wait_for_jobs(live)
+    text = page_text(live.get("/test?suite=followup-email&against=v2").text)
+    assert "This will make about 18 calls to Claude" in text
+    assert "only the version you're trying needs to run" in text
+    calls_before = live.fake.generate_calls + live.fake.judge_calls
+    live.post("/test", data={"suite": "followup-email", "against": "v2", "prompt_text": "New", "note": "Try"})
+    wait_for_jobs(live)
+    assert live.fake.generate_calls + live.fake.judge_calls - calls_before == 18
 
 
 def test_live_start_screen_shows_the_most_recent_result(live):

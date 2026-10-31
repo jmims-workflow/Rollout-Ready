@@ -104,7 +104,7 @@ export ROLLOUT_JUDGE_MODEL=claude-sonnet-5-5
 rollout serve
 ```
 
-Live mode saves new prompts, versions, examples, results and overrides under `suites/`. It only runs what is missing: the new version's outputs, then one AI reviewer call per output. Saved results are reused, keyed by example, rubric and model, and a failed call never loses saved work. Tokens used are shown under **Behind the scenes**; dollar costs are not, because prices change.
+Live mode saves new prompts, versions, examples, results and overrides under `suites/`. It only runs what is missing: any example either version has no real results for, then one AI reviewer call per output. The sample results that ship with the demo never count as saved results in live mode, so the first live test of a demo prompt runs both versions. Saved results are reused, keyed by example, rubric and model, and a failed call never loses saved work. **Behind the scenes** shows "Sample results" or "Real results" for each version, so a comparison can never mix the two silently. Tokens used are shown there too; dollar costs are not, because prices change.
 
 If `ROLLOUT_MODE=live` is set but there is no key, the app falls back to demo mode and says so on every page. The key is read only on the server. It is never sent to the browser, logged or committed (`.env` is in `.gitignore`). `ROLLOUT_SECRET_KEY` optionally signs the demo override cookie; if it is unset, a random key is made at startup.
 

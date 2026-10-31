@@ -63,6 +63,7 @@ Live mode: `ROLLOUT_MODE=live` plus `ANTHROPIC_API_KEY`. Screenshots: run the ap
 - Worse: change <= -threshold, a check that passed now fails, or the new version newly misses a deal-breaker.
 - Better: change >= threshold, or a check that failed now passes. Else no clear change.
 - Verdict: 0 worse and >= 1 better "Ready to roll out"; 0 and 0 "No clear difference"; some worse and more better than worse "Not ready to roll out"; otherwise "Keep the current version". Never "Ready" while the new version misses a deal-breaker on any non-overridden example (it becomes "Not ready").
+- Live mode reads only `runs/`, never `recorded/`. Any example either version lacks live results for runs for real. Behind the scenes labels each version "Sample results" or "Real results".
 - Overrides replace one example's result for one pair of versions, never change stored scores, and lift that example's deal-breaker block. Live: files; demo: signed session cookie.
 - Example kinds: everyday, messy, complicated, broke_before. Nudge when there are no messy or complicated examples.
 - Show scores to one decimal place. Demo numbers are pinned by `tests/test_demo_data.py`; change demo data only if those still pass.

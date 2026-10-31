@@ -164,7 +164,9 @@
 <div class="table-card table-scroll">
 <table>
   <tbody>
-    <tr><th scope="row">Mode</th><td>{{ 'Live: runs on Claude' if comp.new_info.source == 'live' else 'Demo: sample results, run through the same quick checks, scoring and verdict as live mode' }}</td></tr>
+    <tr><th scope="row">Mode</th><td>{{ 'Live: runs on Claude' if settings.is_live else 'Demo: sample results, run through the same quick checks, scoring and verdict as live mode' }}</td></tr>
+    <tr><th scope="row">Results for {{ vname(current_id) }}</th><td>{{ comp.current_info.label }}</td></tr>
+    <tr><th scope="row">Results for {{ vname(new_id) }}</th><td>{{ comp.new_info.label }}</td></tr>
     <tr><th scope="row">Model tested</th><td class="mono">{{ suite.model }}</td></tr>
     <tr><th scope="row">AI reviewer model</th><td class="mono">{{ comp.new_info.judge_model or settings.judge_model }}</td></tr>
     <tr><th scope="row">Runs per example</th><td>{{ suite.repeats }}</td></tr>
