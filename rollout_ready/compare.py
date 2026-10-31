@@ -30,20 +30,16 @@ def entry_is_current(entry: CaseResult, suite: Suite, case: Case) -> bool:
 
 
 def load_results(store: Store, suite_id: str, version_id: str, live: bool) -> VersionResults:
-    """Demo mode reads recorded results only. Live mode also reads its own saved runs."""
-    recorded = store.load_recorded(suite_id, version_id)
-    merged = VersionResults(version=version_id, source="recorded")
-    if recorded:
-        merged = recorded.model_copy(deep=True)
+    """Demo mode reads recorded results only. Live mode reads its own saved runs only.
+
+    Recorded demo results never count as saved results in live mode, so a live
+    comparison is never a silent mix of sample and real outputs.
+    """
     if live:
         runs = store.load_runs(suite_id, version_id)
-        if runs:
-            merged.cases.update(runs.cases)
-            merged.source = "live"
-            merged.ran_at = runs.ran_at or merged.ran_at
-            merged.model = runs.model or merged.model
-            merged.judge_model = runs.judge_model or merged.judge_model
-    return merged
+        return runs or VersionResults(version=version_id, source="live")
+    recorded = store.load_recorded(suite_id, version_id)
+    return recorded or VersionResults(version=version_id, source="recorded")
 
 
 def usable_runs(results: VersionResults, suite: Suite, case: Case) -> list[Run] | None:
@@ -186,6 +182,11 @@ class RunInfo:
     ran_at: str
     input_tokens: int
     output_tokens: int
+
+    @property
+    def label(self) -> str:
+        """Shown on each version in Behind the scenes, so a mix of the two is never silent."""
+        return "Real results" if self.source == "live" else "Sample results"
 
 
 @dataclass
