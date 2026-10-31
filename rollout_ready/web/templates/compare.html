@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, pill, verdict_icon, notice, kind_tag, team_tag, deal_badge, nudge_box %}
+{% from "_macros.html" import icon, pill, verdict_icon, notice, kind_tag, team_tag, deal_badge, nudge_box, honeypot %}
 {% block title %}{% if comp and comp.complete %}{{ comp.verdict }}: {% endif %}See results | {% endblock %}
 {% block content %}
 <h1 class="page-title">See results</h1>
@@ -57,6 +57,7 @@
     <input type="hidden" name="suite" value="{{ suite.id }}">
     <input type="hidden" name="current" value="{{ current_id }}">
     <input type="hidden" name="new" value="{{ new_id }}">
+    {{ honeypot("r-website") }}
     <p class="muted">{{ estimate }}</p>
     <button class="btn" type="submit">Run the missing examples</button>
   </form>

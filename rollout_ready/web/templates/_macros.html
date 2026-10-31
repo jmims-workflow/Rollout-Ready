@@ -30,6 +30,11 @@
 {%- endif -%}
 {%- endmacro %}
 
+{# A field people never see. Bots fill it in, and then nothing calls Claude. Public live mode only. #}
+{% macro honeypot(id) -%}
+{% if settings.is_public %}<div class="hp" aria-hidden="true"><label for="{{ id }}">Leave this empty</label><input type="text" id="{{ id }}" name="{{ honeypot_name }}" value="" tabindex="-1" autocomplete="off"></div>{% endif %}
+{%- endmacro %}
+
 {% macro logo() -%}
 <svg class="brand-mark" viewBox="0 0 36 36" aria-hidden="true" focusable="false"><rect class="logo-tile" width="36" height="36" rx="9"/><path class="logo-check" d="M10.5 18.5 15.5 23.5 25.5 12.5" fill="none" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
 {%- endmacro %}

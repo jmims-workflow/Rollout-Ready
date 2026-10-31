@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import notice, kind_field %}
+{% from "_macros.html" import notice, kind_field, honeypot %}
 {% block title %}Add a new prompt | {% endblock %}
 {% block content %}
 <a class="back" href="/prompts">Your prompts</a>
@@ -8,12 +8,14 @@
 {% if not settings.is_live %}
 {{ notice("Demo: you can fill this in and try “Suggest qualities for me”, but saving is turned off because the demo can't call Claude.", "info") }}
 {% endif %}
+{% if settings.is_public %}{{ notice(private_note, "info") }}{% endif %}
 {% if message %}{{ notice(message, "info") }}{% endif %}
 {% if errors %}
 <div class="notice error" role="alert"><div><p><strong>Please fix {{ 'this' if errors|length == 1 else 'these' }} first:</strong></p><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div></div>
 {% endif %}
 
 <form method="post" action="/prompts/new" id="new-prompt">
+  {{ honeypot("ns-website") }}
   <section class="card step" aria-labelledby="st1">
     <h2 id="st1"><span class="step-num" aria-hidden="true">1</span>Name it</h2>
     <div class="slot-grid">

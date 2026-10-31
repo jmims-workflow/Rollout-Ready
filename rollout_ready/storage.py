@@ -90,13 +90,16 @@ class Store:
             raise _friendly(path, err) from err
         return suite
 
+    def _id_taken(self, suite_id: str) -> bool:
+        return (self.root / suite_id).exists()
+
     def suites(self) -> list[Suite]:
         return [self.load_suite(s) for s in self.suite_ids()]
 
     def create_suite(self, suite: Suite, cases: list[Case], prompt_text: str, note: str = "Original") -> str:
         base = slugify(suite.name)
         suite_id, n = base, 2
-        while (self.root / suite_id).exists():
+        while self._id_taken(suite_id):
             suite_id, n = f"{base}-{n}", n + 1
         folder = self.root / suite_id
         data = suite.model_dump(exclude={"id"})
