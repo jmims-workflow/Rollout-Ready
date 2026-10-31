@@ -421,6 +421,27 @@ def test_behind_the_scenes_says_sample_or_real_results_for_each_version(demo, li
     assert "Sample results" not in text
 
 
+def test_test_a_change_estimate_counts_both_versions(live, live_settings):
+    # v2 has only sample results, so all 8 examples run for both versions: 32 calls.
+    text = page_text(live.get("/test?suite=followup-email&against=v2").text)
+    assert "This will make about 32 calls to Claude" in text
+    assert "It has no real results yet, so it runs on every example too." in text
+    r = live.post("/prompts/followup-email/examples",
+                  data={"name": "New one", "input": "Notes", "against": "v2"},
+                  headers={"X-Requested-With": "fetch"})
+    assert r.json()["estimate"].startswith("This will make about 36 calls to Claude")
+    # Once v2 has real results, only the version you're trying runs.
+    live.post("/run", data={"suite": "followup-email", "current": "v2", "new": "v2"})
+    wait_for_jobs(live)
+    text = page_text(live.get("/test?suite=followup-email&against=v2").text)
+    assert "This will make about 18 calls to Claude" in text
+    assert "only the version you're trying needs to run" in text
+    calls_before = live.fake.generate_calls + live.fake.judge_calls
+    live.post("/test", data={"suite": "followup-email", "against": "v2", "prompt_text": "New", "note": "Try"})
+    wait_for_jobs(live)
+    assert live.fake.generate_calls + live.fake.judge_calls - calls_before == 18
+
+
 def test_live_start_screen_shows_the_most_recent_result(live):
     live.post("/test", data={"suite": "partner-outreach", "against": "v1", "prompt_text": "Better", "note": "Try"})
     wait_for_jobs(live)

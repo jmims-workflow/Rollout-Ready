@@ -3,6 +3,7 @@
 {% if settings.is_live %}
 <form method="post" action="/prompts/{{ suite.id }}/examples" data-add-case>
   <input type="hidden" name="next" value="{{ next_url }}">
+  {% if against %}<input type="hidden" name="against" value="{{ against.id }}">{% endif %}
   <div class="slot-grid">
     <div class="field">
       <label for="ac-name">Name <span class="hint">A few words on what makes it hard, like "Two people, two different asks".</span></label>
