@@ -8,7 +8,7 @@ Users are the people who own a shared prompt in sales, marketing and partnership
 
 ## Plain words (user-facing text)
 
-Every word a user sees (pages, buttons, labels, verdict sentences, the copied summary, error messages, How it works) uses the right-hand column. Code, file formats, YAML keys, CLI output and the README's "Under the hood" section keep the technical names. Do not rename files, YAML keys or CLI commands. `tests/test_web.py` scans rendered pages for the technical words.
+Every word a user sees (pages, buttons, labels, verdict sentences, the copied summary, error messages, How it works) uses the right-hand column. Code, file formats, YAML keys, CLI output and the "Under the hood" page (`docs/architecture.md`) keep the technical names. Do not rename files, YAML keys or CLI commands. `tests/test_web.py` scans rendered pages for the technical words.
 
 | Technical | On screen |
 | --- | --- |
