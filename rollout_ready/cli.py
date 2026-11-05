@@ -50,7 +50,7 @@ def run(
     report: Optional[Path] = typer.Option(None, "--report", help="Also write the summary as Markdown to this file."),
     suites_dir: Optional[Path] = typer.Option(None, help="Folder that holds the suites."),
 ) -> None:
-    """Compare two versions and print the verdict. Exits 1 if the new version should not roll out."""
+    """Compare two versions and print the verdict. Exits 0 if ready or no clear difference, 1 if not ready or it needs review, 2 if the test is incomplete."""
     settings = load_settings(suites_dir, force_live=live)
     if settings.fallback_notice:
         typer.echo(settings.fallback_notice, err=True)
@@ -83,8 +83,9 @@ def run(
     if report:
         report.write_text(summary_text(comp, markdown=True), encoding="utf-8")
         typer.echo(f"Summary written to {report}")
-    if scoring.blocks_rollout(comp.verdict):
-        raise typer.Exit(1)
+    code = scoring.exit_code(comp.verdict)
+    if code:
+        raise typer.Exit(code)
 
 
 @app.command()

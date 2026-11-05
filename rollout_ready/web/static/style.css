@@ -12,7 +12,7 @@
   --primary: #6A3D66;       /* buttons, links, Got better, selected tab, logo tile */
   --primary-dark: #4F2D4C;  /* button hover */
   --primary-soft: #EFE2EE;
-  --alert-fill: #FBE8E2;    /* Not ready and Keep the current version */
+  --alert-fill: #FBE8E2;    /* Not ready and Needs review */
   --alert-line: #E8B9AC;
   --alert-ink: #7A3322;
   --worse-ink: #A3361B;     /* Got worse and deal-breaker text */
@@ -240,15 +240,15 @@ input[type="radio"], input[type="checkbox"] { width: 22px; height: 22px; margin:
 /* verdict card and banner colors -------------------------------------- */
 .verdict { border: 1px solid var(--line); border-radius: var(--radius-card); padding: 1.4rem; margin-bottom: 1.25rem; background: var(--card); }
 .verdict-ready { background: var(--primary-soft); border-color: var(--primary); }
-.verdict-same { background: var(--card); border-color: var(--line); }
-.verdict-not-ready, .verdict-keep { background: var(--alert-fill); border-color: var(--alert-line); }
+.verdict-same, .verdict-incomplete { background: var(--card); border-color: var(--line); }
+.verdict-not-ready, .verdict-review { background: var(--alert-fill); border-color: var(--alert-line); }
 .verdict-icon { width: 40px; height: 40px; flex: none; }
 .vi-mark { stroke: var(--on-primary); }
 .vi-dot { fill: var(--on-primary); }
 .verdict-ready .vi-fill { fill: var(--primary); }
-.verdict-same .vi-fill { fill: var(--muted); }
-.verdict-not-ready .vi-fill, .verdict-keep .vi-fill { fill: var(--alert-ink); }
-.verdict-not-ready h2, .verdict-keep h2 { color: var(--alert-ink); }
+.verdict-same .vi-fill, .verdict-incomplete .vi-fill { fill: var(--muted); }
+.verdict-not-ready .vi-fill, .verdict-review .vi-fill { fill: var(--alert-ink); }
+.verdict-not-ready h2, .verdict-review h2 { color: var(--alert-ink); }
 .verdict-ready h2 { color: var(--primary); }
 .verdict-head { display: flex; gap: .85rem; align-items: flex-start; }
 .eyebrow { font-size: .88rem; font-weight: 600; color: var(--muted); margin: 0 0 .1rem; }

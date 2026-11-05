@@ -284,7 +284,7 @@ class Comparison:
     def explanation(self) -> str:
         return scoring.explanation(
             self.verdict, self.new.full_name, self.current.full_name,
-            self.worse, self.better, self.avg_current, self.avg_new,
+            self.worse, self.better, self.avg_current, self.avg_new, total=len(self.rows),
         )
 
     @property

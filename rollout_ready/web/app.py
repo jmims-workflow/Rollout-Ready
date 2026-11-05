@@ -49,7 +49,8 @@ VERDICT_PHRASES = {
     scoring.READY: "is ready to roll out",
     scoring.NO_DIFFERENCE: "made no clear difference",
     scoring.NOT_READY: "is not ready to roll out",
-    scoring.KEEP_CURRENT: "is not ready, so keep the version your team uses now",
+    scoring.NEEDS_REVIEW: "needs review before it rolls out",
+    scoring.INCOMPLETE: "has an incomplete test",
 }
 
 

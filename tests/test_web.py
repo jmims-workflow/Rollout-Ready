@@ -166,18 +166,18 @@ def test_summary_download(demo):
     assert "Got worse: 2, Got better: 4, About the same: 2" in r.text
 
 
-def test_all_four_verdicts_render(demo):
+def test_demo_verdicts_render(demo):
     for q, text in [("suite=followup-email&current=v2&new=v4", "Ready to roll out"),
                     ("suite=followup-email&current=v2&new=v3", "Not ready to roll out"),
                     ("suite=partner-outreach&current=v1&new=v2", "Ready to roll out"),
                     ("suite=webinar-invite&current=v1&new=v2", "No clear difference"),
-                    ("suite=webinar-invite&current=v2&new=v3", "Keep the current version")]:
+                    ("suite=webinar-invite&current=v2&new=v3", "Not ready to roll out")]:
         page = demo.get("/results?" + q).text
         assert text in page and "spot-check real outputs in its first week" in page
 
 
 def test_picking_a_prompt_opens_its_default_pair(demo):
-    assert "Keep the current version" in demo.get("/results?suite=webinar-invite").text
+    assert "Not ready to roll out" in demo.get("/results?suite=webinar-invite").text
     assert "Ready to roll out" in demo.get("/results?suite=partner-outreach").text
 
 
@@ -363,7 +363,6 @@ PAGES = ["/", "/results", f"{FEATURED}&tab=good", f"{FEATURED}&tab=changes", f"{
 
 
 def technical_words(text: str) -> list[str]:
-    text = text.replace("Keep the current version", "")  # the verdict's own name
     return sorted({m.group(0) for p in TECHNICAL for m in re.finditer(p, text, flags=re.I)})
 
 

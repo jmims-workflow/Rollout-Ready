@@ -4,11 +4,20 @@
 - Case score: mean of its criterion scores, averaged across repeats.
 - Change: new minus current, rounded to 2 decimal places before comparing.
 - Worse: change <= -threshold, a check that passed now fails, or the new
-  version newly misses a deal-breaker (scores it DEAL_BREAKER_CUTOFF or lower).
+  version newly misses a deal-breaker.
 - Better: change >= threshold, or a check that failed now passes.
 - Otherwise: no clear change.
-- The verdict is never "Ready to roll out" while the new version misses a
-  deal-breaker on any example.
+- A deal-breaker is missed when the reviewer scores it DEAL_BREAKER_CUTOFF or
+  lower in any repetition, even if the average across repetitions is higher.
+- Verdicts, in this order (spec section 5):
+  1. Test incomplete: any answer or review is missing, cut off or failed. No verdict.
+  2. Not ready: the new version misses a deal-breaker on any example in any
+     repetition, or at least one example got worse and no more got better.
+  3. Needs review: some got worse, more got better, no deal-breaker missed.
+  4. Ready to roll out: none worse, at least one better, no deal-breaker missed.
+  5. No clear difference: none better or worse, no deal-breaker missed.
+- Command line exit codes: 0 for Ready and No clear difference, 1 for Not
+  ready and Needs review, 2 for Test incomplete.
 
 User-facing words: a case is an "example", Worse / Better / No clear change
 are "Got worse" / "Got better" / "About the same".
@@ -31,9 +40,12 @@ DEAL_BREAKER_CUTOFF = 2  # a deal-breaker scored this or lower is missed
 READY = "Ready to roll out"
 NO_DIFFERENCE = "No clear difference"
 NOT_READY = "Not ready to roll out"
-KEEP_CURRENT = "Keep the current version"
+NEEDS_REVIEW = "Needs review"
+INCOMPLETE = "Test incomplete"
 
-VERDICT_KEYS = {READY: "ready", NO_DIFFERENCE: "same", NOT_READY: "not-ready", KEEP_CURRENT: "keep"}
+VERDICT_KEYS = {READY: "ready", NO_DIFFERENCE: "same", NOT_READY: "not-ready", NEEDS_REVIEW: "review",
+                INCOMPLETE: "incomplete"}
+EXIT_CODES = {READY: 0, NO_DIFFERENCE: 0, NOT_READY: 1, NEEDS_REVIEW: 1, INCOMPLETE: 2}
 
 
 def fmt(score: float | None) -> str:
@@ -74,9 +86,17 @@ def is_missed(score: float) -> bool:
     return score <= DEAL_BREAKER_CUTOFF
 
 
+def deal_breaker_misses(runs: list[Run], rubric: list[Criterion]) -> list[tuple[Criterion, int, int, str]]:
+    """Every deal-breaker miss: (quality, repetition number from 1, original score, reviewer's reason)."""
+    return [(c, i, run.scores[c.id].score, run.scores[c.id].reason)
+            for c in rubric if c.deal_breaker
+            for i, run in enumerate(runs, start=1) if is_missed(run.scores[c.id].score)]
+
+
 def missed_deal_breakers(runs: list[Run], rubric: list[Criterion]) -> list[Criterion]:
-    """Deal-breakers this output misses, using the mean score across repeats."""
-    return [c for c in rubric if c.deal_breaker and is_missed(criterion_mean(runs, c.id))]
+    """Deal-breakers this output misses in any repetition, even if the average is higher."""
+    missed = {c.id for c, *_ in deal_breaker_misses(runs, rubric)}
+    return [c for c in rubric if c.id in missed]
 
 
 def classify(
@@ -98,16 +118,22 @@ def classify(
     return SAME
 
 
-def verdict(worse: int, better: int, misses_deal_breaker: bool = False) -> str:
-    if worse == 0:
-        if better >= 1:
-            return NOT_READY if misses_deal_breaker else READY
-        return NO_DIFFERENCE
-    return NOT_READY if better > worse else KEEP_CURRENT
+def verdict(worse: int, better: int, misses_deal_breaker: bool = False, complete: bool = True) -> str:
+    """The five verdicts, applied in the order of spec section 5."""
+    if not complete:
+        return INCOMPLETE
+    if misses_deal_breaker or (worse >= 1 and better <= worse):
+        return NOT_READY
+    if worse >= 1:
+        return NEEDS_REVIEW
+    if better >= 1:
+        return READY
+    return NO_DIFFERENCE
 
 
-def blocks_rollout(verdict_text: str) -> bool:
-    return verdict_text in (NOT_READY, KEEP_CURRENT)
+def exit_code(verdict_text: str) -> int:
+    """For the command line: 0 Ready or No clear difference, 1 Not ready or Needs review, 2 Test incomplete."""
+    return EXIT_CODES[verdict_text]
 
 
 def _cases(n: int) -> str:
@@ -139,20 +165,29 @@ def explanation(
     better: int,
     avg_current: float,
     avg_new: float,
+    total: int | None = None,
 ) -> str:
+    if verdict_text == INCOMPLETE:
+        return "Some answers or reviews are missing, so there is no verdict yet."
     avg = _average_phrase(avg_current, avg_new)
     if verdict_text == READY:
-        return f"{new_title} made {better} {_cases(better)} better and none worse. The average score {avg}."
+        n = better if total is None else total
+        return (f"Passed your checks on {n} saved {_cases(n)}: {better} got better, none got worse, "
+                "and no deal-breakers were missed. Review the results before updating your team's tool.")
     if verdict_text == NO_DIFFERENCE:
         return (
             f"{new_title} did about the same as {current_title.lower()} on every example, "
             f"so nothing got clearly better or worse. The average score {avg}."
         )
     if verdict_text == NOT_READY and not worse:
+        if not better:
+            return (f"{new_title} did about the same as {current_title.lower()} on every example, "
+                    f"but it misses a deal-breaker. The average score {avg}.")
         return (
             f"{new_title} made {better} {_cases(better)} better and none worse, "
             f"but it still misses a deal-breaker. The average score {avg}."
         )
+    # Not ready with examples that got worse, and Needs review: say when the average hides problems.
     if better:
         counts = f"{new_title} made {better} {_cases(better)} better and {worse} {_cases(worse)} worse."
     else:
