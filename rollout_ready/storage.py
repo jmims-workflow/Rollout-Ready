@@ -6,6 +6,7 @@ suites/<suite-id>/
   recorded/<version>.json     demo outputs and judge scores
   runs/<version>.json         live results
   runs/overrides.json         live overrides, keyed "<current>:<new>" then case id
+  runs/<key>.json             records written through the storage interface (records.py)
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ import yaml
 from pydantic import ValidationError
 
 from .models import Case, Override, Suite, Version, VersionResults
+from .records import LocalRecordStore, set_lock
 
 VERSION_RE = re.compile(r"^v(\d+)\.md$")
 
@@ -64,6 +66,17 @@ def slugify(text: str) -> str:
 class Store:
     def __init__(self, root: Path):
         self.root = Path(root)
+
+    # records (evidence, releases, overrides, tokens) ---------------------
+    def records(self, suite_id: str) -> LocalRecordStore:
+        """Where this store writes records for one set: <root>/<suite-id>/runs/."""
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", suite_id or ""):
+            raise SuiteError(f"There is no prompt called {suite_id!r}.")
+        return LocalRecordStore(self.root / suite_id / "runs")
+
+    def lock(self, suite_id: str):
+        """A lock around read-modify-write operations on one set's records."""
+        return set_lock(self.root / suite_id)
 
     # suites -----------------------------------------------------------
     def suite_ids(self) -> list[str]:
