@@ -49,7 +49,7 @@ Limits (environment variables, with their defaults):
 | --- | --- | --- |
 | `ROLLOUT_MAX_RUNS_PER_SESSION` | 3 | Live runs per visitor session |
 | `ROLLOUT_MAX_RUNS_PER_IP_PER_DAY` | 5 | Live runs per address per day (the first address in `X-Forwarded-For`, which is the visitor on Cloud Run) |
-| `ROLLOUT_MAX_RUNS_PER_DAY` | 10 | Live runs per day across all visitors |
+| `ROLLOUT_MAX_RUNS_PER_DAY` | 5 | Live runs per day across all visitors |
 
 A run is one test, one "Run the missing examples", one saved new prompt (scoring version 1) or one "Suggest qualities for me". Each test runs on at most 8 examples, and each pasted prompt or example is at most 5,000 characters. When a limit is reached, visitors see "Today's live tests are used up. Try again tomorrow, or explore the sample results." and every sample page keeps working. Test a change shows what is left, for example "2 of 3 live tests left today." Days are counted in UTC. Addresses are stored only as salted hashes, in `usage.json` in the data folder.
 

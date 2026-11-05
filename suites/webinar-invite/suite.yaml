@@ -1,4 +1,4 @@
-name: Webinar invite email
+name: Webinar invite writer
 description: Turns an event brief into an invite email for a Northstar webinar on Insight dashboards.
 type: gpt
 team: Marketing

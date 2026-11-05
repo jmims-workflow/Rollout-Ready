@@ -1,7 +1,7 @@
-name: Partner outreach first message
+name: Partner outreach
 description: Turns a partnerships rep's notes into a first message to a possible reseller or integration partner.
 type: skill
-team: Partnerships
+team: Business development
 who_uses_it: Partnerships reps, before first contact with a possible reseller or integration partner.
 owner_name: Ama Okafor
 owner_team: Business development

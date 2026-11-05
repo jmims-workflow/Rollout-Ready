@@ -59,7 +59,7 @@ Live mode: `ROLLOUT_MODE=live` plus `ANTHROPIC_API_KEY`. Public live mode adds `
 - `rollout_ready/public.py` public live mode: per-visitor `SessionStore`, shared answers and reviews for demo versions, usage limits, Origin check
 - `rollout_ready/storage.py` suite files: `suites/<id>/suite.yaml, cases.yaml, versions/vN.md, recorded/, history.json`, and records under `runs/` (`answers/`, `reviews/`, `evaluations/`, `releases.json`, `override-events.json`)
 - `rollout_ready/web/` FastAPI app, Jinja2 templates, plain CSS, small vanilla JS. Start screen at `/`; old URLs `/suites` and `/scoring` redirect.
-- Demo prompts: `followup-email` (Sales, featured v2 to v3), `partner-outreach` (Partnerships), `webinar-invite` (Marketing). Each has `history.json`: version 2 is in use for all three; webinar version 2 is a roll out anyway on a No clear difference result.
+- Demo prompts: `followup-email` (Sales, featured v2 to v3), `partner-outreach` (Business development; v2 to v3 is Needs review), `webinar-invite` (Marketing). Each has `history.json`: version 2 is in use for all three; webinar version 2 is a roll out anyway on a No clear difference result.
 
 ## Scoring rules
 
@@ -85,7 +85,7 @@ Live mode: `ROLLOUT_MODE=live` plus `ANTHROPIC_API_KEY`. Public live mode adds `
 - Privacy: anything a visitor writes or adds (versions, examples, edits, new prompts, results, overrides, jobs) is visible only to that session. Session id is in the signed cookie, ends with the browser and is refused after 24 hours; old folders are pruned.
 - Shared cache (`ROLLOUT_DATA_DIR/shared/`) holds only real results for an unchanged demo version on an unchanged demo example with the demo rubric and model. Nothing a visitor wrote may ever go there.
 - Comparisons are all real or all sample, never mixed. Public visitors see the demo's sample comparison when real results are incomplete and sample results are complete.
-- Limits: `ROLLOUT_MAX_RUNS_PER_SESSION` (3), `ROLLOUT_MAX_RUNS_PER_IP_PER_DAY` (5, first `X-Forwarded-For` address, stored hashed), `ROLLOUT_MAX_RUNS_PER_DAY` (10). A run is a test, "Run the missing examples", saving a new prompt, or "Suggest qualities for me". At most 8 examples per test, 5,000 characters per prompt or example. Check limits after form validation and before any call; a refused run makes no calls. Sample pages must keep working when limits are used up.
+- Limits: `ROLLOUT_MAX_RUNS_PER_SESSION` (3), `ROLLOUT_MAX_RUNS_PER_IP_PER_DAY` (5, first `X-Forwarded-For` address, stored hashed), `ROLLOUT_MAX_RUNS_PER_DAY` (5). A run is a test, "Run the missing examples", saving a new prompt, or "Suggest qualities for me". At most 8 examples per test, 5,000 characters per prompt or example. Check limits after form validation and before any call; a refused run makes no calls. Sample pages must keep working when limits are used up.
 - Spam: the honeypot field (`website`) on every form that can call Claude; if filled, show a normal page and make no calls. POSTs must pass the Origin check.
 - Copy: "Your tests are private to you and last until you close this browser or for 24 hours. Don't paste anything confidential." on Test a change, Your prompts and Add a new prompt. "N of 3 live tests left today." on Test a change. Limit message: "Today's live tests are used up. Try again tomorrow, or explore the sample results."
 - Deploy with `--max-instances 1` and the key in Secret Manager. `tests/test_public.py` covers all of this.

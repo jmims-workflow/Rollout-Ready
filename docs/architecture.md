@@ -81,15 +81,16 @@ rollout run followup-email --current v2 --new v3 --report summary.md
 
 ## Demo data
 
-Demo mode has three fictional Northstar Systems prompts, one per team. In demo data, Needs review is reached only through an override. Version 2 is in use for all three, from `history.json`:
+Demo mode has three fictional Northstar Systems sets of AI instructions, one per team, and all four final verdicts. Version 2 is in use for all three, from `history.json`:
 
 | Prompt | Team | Versions | Verdict |
 | --- | --- | --- | --- |
-| Discovery follow-up email | Sales | 2 to 3 (featured) | Not ready to roll out, with a missed deal-breaker on 2 examples |
-| Discovery follow-up email | Sales | 2 to 4 (the saved example on Test a change) | Ready to roll out |
-| Partner outreach first message | Partnerships | 1 to 2 | Ready to roll out |
-| Webinar invite email | Marketing | 1 to 2 | No clear difference |
-| Webinar invite email | Marketing | 2 to 3 | Not ready to roll out, with a missed deal-breaker |
+| Sales follow-up assistant | Sales | 2 to 3 (featured) | Not ready to roll out, with a missed deal-breaker on 2 examples |
+| Sales follow-up assistant | Sales | 2 to 4 (the saved example on Test a change) | Ready to roll out |
+| Partner outreach | Business development | 1 to 2 | Ready to roll out |
+| Partner outreach | Business development | 2 to 3 | Needs review: 3 better, 1 worse, 2 about the same |
+| Webinar invite writer | Marketing | 1 to 2 | No clear difference |
+| Webinar invite writer | Marketing | 2 to 3 | Not ready to roll out, with a missed deal-breaker |
 
 ## What the tests cover
 

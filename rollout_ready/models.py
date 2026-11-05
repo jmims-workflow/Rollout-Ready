@@ -81,7 +81,7 @@ class Suite(BaseModel):
     name: str = Field(min_length=1)
     description: str = ""
     type: InstructionType = "prompt"
-    team: str = ""  # Sales, Marketing, Partnerships ...
+    team: str = ""  # Sales, Marketing, Business development ...
     who_uses_it: str = ""
     owner_name: str = ""  # self-reported, not verified
     owner_team: str = ""
@@ -127,9 +127,9 @@ CaseKind = Literal["everyday", "messy", "complicated", "broke_before"]
 # What each kind is called in the app, and a one-line hint for the Add example form.
 CASE_KINDS: dict[str, tuple[str, str]] = {
     "everyday": ("Everyday", "A typical input, the kind the team pastes in most days."),
-    "messy": ("Messy or incomplete", "Rough notes, missing details, or things out of order."),
-    "complicated": ("Complicated", "Several people, several asks, or details that are easy to mix up."),
-    "broke_before": ("Broke before", "An input where a real output went wrong in the past."),
+    "messy": ("Messy", "Rough notes, missing details, or things out of order."),
+    "complicated": ("Tricky", "Several people, several asks, or details that are easy to mix up."),
+    "broke_before": ("Caused a problem before", "An input where a real output went wrong in the past."),
 }
 
 

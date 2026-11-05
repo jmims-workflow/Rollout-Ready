@@ -67,7 +67,7 @@ def test_sample_results_stay_visible(app):
     v = visitor(app)
     home = v.get("/").text
     assert "Live: runs on Claude" in home
-    assert "Latest result: version 3 of the discovery follow-up email is not ready to roll out." in home
+    assert "Latest result: version 3 of the sales follow-up assistant is not ready to roll out." in home
     r = v.get(FEATURED + "&tab=details")
     assert r.status_code == 200 and "Not ready to roll out" in r.text
     assert r.text.count("Sample results") >= 2 and "Real results" not in r.text
@@ -121,13 +121,13 @@ def test_one_session_never_sees_another(app, suites_copy, data_dir):
     assert "Secret pricing" not in b.get("/test").text
 
     # A new prompt is private too, even when it has the same name as a demo prompt.
-    a.post("/prompts/new", data={"action": "save", "name": "Discovery follow-up email", "prompt_text": "Alice prompt",
+    a.post("/prompts/new", data={"action": "save", "name": "Sales follow-up assistant", "prompt_text": "Alice prompt",
                                  "case_name_1": "One", "case_input_1": "Alice input", "crit_name_1": "Clear",
                                  "crit_five_1": "Very clear", "crit_one_1": "Unclear"})
     wait(app)
     assert "Alice prompt" not in b.get("/prompts/followup-email").text
-    assert b.get("/prompts").text.count("Discovery follow-up email") == 1
-    assert a.get("/prompts").text.count("Discovery follow-up email") == 2
+    assert b.get("/prompts").text.count("Sales follow-up assistant") == 1
+    assert a.get("/prompts").text.count("Sales follow-up assistant") == 2
 
     # Nothing a visitor wrote lands in the shared prompts folder or the shared cache.
     assert snapshot(suites_copy) == before
@@ -299,3 +299,8 @@ def test_usage_resets_daily_but_session_count_stays():
         clock[0] += 20 * 60 * 60
         assert u.left("b" * 32, "1.1.1.1") == 1 and u.left("a" * 32, "1.1.1.1") == 1
         assert u.take("a" * 32, "2.2.2.2") and not u.take("a" * 32, "3.3.3.3")
+
+
+def test_default_daily_cap_is_5():
+    """Spec section 10, rule 8: 5 live runs a day across everyone by default, still 3 per session and 5 per address."""
+    assert (Limits().per_session, Limits().per_ip_per_day, Limits().per_day) == (3, 5, 5)

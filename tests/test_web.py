@@ -55,13 +55,13 @@ def test_start_screen(demo):
     assert "What would you like to do?" in text
     assert ("Rollout Ready runs a prompt change on real examples, so you find out what it broke "
             "before your team does.") in text
-    assert ("Latest result: version 3 of the discovery follow-up email is not ready to roll out. "
+    assert ("Latest result: version 3 of the sales follow-up assistant is not ready to roll out. "
             "It broke 2 examples.") in text
     assert "See why" in text and 'href="/results?suite=followup-email&amp;current=v2&amp;new=v3"' in r.text
     assert "Test a prompt change before your team sees it" in text
     assert "Demo: sample results" in text
-    for title, href, meta in [("Test a change", "/test", "Start here"), ("See results", "/results", "9 saved results"),
-                              ("Your prompts", "/prompts", "3 prompts: sales, marketing, partnerships"),
+    for title, href, meta in [("Test a change", "/test", "Start here"), ("See results", "/results", "10 saved results"),
+                              ("Your prompts", "/prompts", "3 prompts: sales, business development, marketing"),
                               ("How it works", "/how-it-works", "2 minute read")]:
         assert title in text and f'href="{href}"' in r.text and meta in text
     assert "This demo uses sample results for a fictional company, Northstar Systems. Nothing you type here is saved." in text
@@ -115,7 +115,7 @@ def test_examples_are_cards_with_worse_first(demo):
     cards = re.findall(r'<li class="example-card result-(\w+)">(.*?)</li>', r.text, flags=re.S)
     assert [c[0] for c in cards] == ["worse", "worse", "better", "better", "better", "better", "same", "same"]
     first = page_text(cards[0][1])
-    assert "Pricing question left unanswered" in first and "Complicated" in first and "Ridgeway Logistics" in first
+    assert "Pricing question left unanswered" in first and "Tricky" in first and "Ridgeway Logistics" in first
     assert "Missed a deal-breaker: Answers every question asked" in first
     assert "4.0 to 2.8" in first and "Got worse" in first
     assert "Example mix: 3 everyday, 2 messy, 2 complicated, 1 that broke before." in page_text(r.text)
@@ -178,7 +178,7 @@ def test_demo_verdicts_render(demo):
 
 def test_picking_a_prompt_opens_its_default_pair(demo):
     assert "Not ready to roll out" in demo.get("/results?suite=webinar-invite").text
-    assert "Ready to roll out" in demo.get("/results?suite=partner-outreach").text
+    assert "Needs review" in demo.get("/results?suite=partner-outreach").text  # version 3 against version 2, in use
 
 
 # overrides -----------------------------------------------------------------------
@@ -294,7 +294,7 @@ def test_nudge_when_there_are_no_messy_or_complicated_examples(live, live_settin
 def test_add_example_asks_for_its_kind(live):
     r = live.get("/prompts/partner-outreach")
     assert "What kind of example is this?" in r.text
-    for label in ("Everyday", "Messy or incomplete", "Complicated", "Broke before"):
+    for label in ("Everyday", "Messy", "Tricky", "Caused a problem before"):
         assert label in r.text
 
 
@@ -308,7 +308,7 @@ def test_other_pages(demo):
 
 def test_prompts_show_team_tags_and_deal_breaker_badges(demo):
     text = page_text(demo.get("/prompts").text)
-    for team in ("Sales", "Marketing", "Partnerships"):
+    for team in ("Sales", "Marketing", "Business development"):
         assert team in text
     r = demo.get("/prompts/followup-email")
     assert r.text.count('class="tag tag-deal"') == 2 and 'class="tag tag-team">Sales' in r.text
@@ -335,7 +335,7 @@ def test_demo_test_page_replays_saved_example(demo):
     r = demo.get("/test")
     assert "Run the saved example" in r.text and "readonly" in r.text
     assert "If answering every question takes more, answering wins." in r.text
-    assert "Complicated" in r.text
+    assert "Tricky" in r.text
     r = demo.post("/test", data={"prompt_text": "anything", "note": "x"}, follow_redirects=False)
     assert r.status_code == 303
     page = demo.get(r.headers["location"])
@@ -454,7 +454,7 @@ def test_live_start_screen_shows_the_most_recent_result(live):
     live.post("/test", data={"suite": "partner-outreach", "against": "v1", "prompt_text": "Better", "note": "Try"})
     wait_for_jobs(live)
     text = page_text(live.get("/").text)
-    assert "Latest result: version 3 of the partner outreach first message" in text
+    assert "Latest result: version 4 of the partner outreach" in text
 
 
 def test_live_add_example_without_reload(live):
@@ -462,7 +462,7 @@ def test_live_add_example_without_reload(live):
                   data={"name": "New one", "label": "Test Co", "input": "Notes", "kind": "complicated"},
                   headers={"X-Requested-With": "fetch"})
     body = r.json()
-    assert body["ok"] and body["count"] == 7 and body["case"]["kind"] == "complicated" and body["kind_label"] == "Complicated"
+    assert body["ok"] and body["count"] == 7 and body["case"]["kind"] == "complicated" and body["kind_label"] == "Tricky"
 
 
 def test_live_new_prompt_saves_deal_breakers_kinds_and_team(live, live_settings):
