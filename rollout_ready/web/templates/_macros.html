@@ -78,6 +78,11 @@
 {%- endif -%}
 {%- endmacro %}
 
+{% macro whats_this(term, text) -%}
+{# "What's this?" help at the first mention of a term on a page. #}
+<details class="whats-this"><summary>What's this?<span class="visually-hidden"> {{ term }}</span></summary><p>{{ text }}</p></details>
+{%- endmacro %}
+
 {% macro notice(text, kind='') -%}
 <div class="notice {{ kind }}" role="{{ 'alert' if kind == 'error' else 'note' }}">{{ icon('info') }}<div><p>{{ text }}</p></div></div>
 {%- endmacro %}

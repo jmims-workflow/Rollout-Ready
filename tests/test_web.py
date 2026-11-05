@@ -58,14 +58,14 @@ def test_start_screen(demo):
     assert ("Latest result: version 3 of the sales follow-up assistant is not ready to roll out. "
             "It broke 2 examples.") in text
     assert "See why" in text and 'href="/results?suite=followup-email&amp;current=v2&amp;new=v3"' in r.text
-    assert "Test a prompt change before your team sees it" in text
+    assert "Test, review and roll out changes to your team's AI instructions." in text
     assert "Demo: sample results" in text
     for title, href, meta in [("Test a change", "/test", "Start here"), ("See results", "/results", "10 saved results"),
                               ("Your prompts", "/prompts", "3 prompts: sales, business development, marketing"),
                               ("How it works", "/how-it-works", "2 minute read")]:
         assert title in text and f'href="{href}"' in r.text and meta in text
     assert "This demo uses sample results for a fictional company, Northstar Systems. Nothing you type here is saved." in text
-    assert 'class="main-nav"' not in r.text
+    assert 'class="main-nav"' in r.text  # the header nav is on every page (spec section 2)
 
 
 def test_start_screen_footer_line_is_demo_only(live):
@@ -76,8 +76,7 @@ def test_start_screen_footer_line_is_demo_only(live):
 def test_inner_pages_have_home_link_and_new_nav(demo):
     r = demo.get("/test")
     nav = re.search(r'<nav class="main-nav".*?</nav>', r.text, flags=re.S).group(0)
-    assert [html.unescape(t) for t in re.findall(r">([^<]+)</a>", nav)] == [
-        "Home", "Test a change", "See results", "Your prompts", "How it works"]
+    assert [html.unescape(t) for t in re.findall(r">([^<]+)</a>", nav)] == ["Manage", "How it works"]
     assert 'href="/"' in nav and '<a class="brand" href="/">' in r.text
 
 
@@ -534,3 +533,34 @@ def test_add_example_estimate_counts_the_version_in_use_when_none_is_given(live)
                       headers={"X-Requested-With": "fetch"})
         n = r.json()["count"]
         assert r.json()["estimate"].startswith(f"This will make about {n * 2 * 2} calls to Claude")
+
+
+
+# the demo strip ---------------------------------------------------------------------
+STRIP = "This demo uses sample results for a fictional company, Northstar Systems. Your changes last until you close this browser."
+
+
+def test_demo_strip_on_every_page_and_hide_is_remembered(demo):
+    for url in ("/", "/how-it-works", "/prompts/followup-email"):
+        assert STRIP in page_text(demo.get(url).text), url
+    before = snapshot(SUITES)
+    r = demo.post("/demo/hide-strip", data={"next": "/how-it-works"}, follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "/how-it-works"
+    for url in ("/", "/how-it-works"):
+        assert STRIP not in page_text(demo.get(url).text)
+    assert snapshot(SUITES) == before
+
+
+def test_hide_strip_never_redirects_off_site(demo):
+    r = demo.post("/demo/hide-strip", data={"next": "//elsewhere.example"}, follow_redirects=False)
+    assert r.headers["location"] == "/"
+
+
+def test_no_strip_in_local_live_mode(live):
+    assert 'class="demo-strip"' not in live.get("/").text
+
+
+def test_strip_contrast_and_tokens():
+    css = (SUITES.parent / "rollout_ready/web/static/style.css").read_text()
+    rule = re.search(r"\.demo-strip \{([^}]*)\}", css).group(1)
+    assert "var(--ink)" in rule and "var(--on-primary)" in rule  # existing tokens: white on #2B1F29, 15.8 to 1

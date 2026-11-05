@@ -304,3 +304,8 @@ def test_usage_resets_daily_but_session_count_stays():
 def test_default_daily_cap_is_5():
     """Spec section 10, rule 8: 5 live runs a day across everyone by default, still 3 per session and 5 per address."""
     assert (Limits().per_session, Limits().per_ip_per_day, Limits().per_day) == (3, 5, 5)
+
+
+def test_public_strip_says_how_long_work_lasts(app):
+    text = visitor(app).get("/").text
+    assert "Your work here lasts up to 24 hours and may reset sooner." in text

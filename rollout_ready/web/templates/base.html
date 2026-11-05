@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}{% endblock %}Rollout Ready: Test a prompt change before your team sees it</title>
+<title>{% block title %}{% endblock %}Rollout Ready: test, review and roll out changes to your team's AI instructions</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
@@ -17,7 +17,7 @@
   <div class="wrap header-inner">
     <a class="brand" href="/">
       {{ logo() }}
-      <span class="brand-text"><span class="brand-name">Rollout Ready</span><span class="tagline">Test a prompt change before your team sees it</span></span>
+      <span class="brand-text"><span class="brand-name">Rollout Ready</span><span class="tagline">Test, review and roll out changes to your team's AI instructions.</span></span>
       {% if nav != 'home' %}<span class="visually-hidden">, home</span>{% endif %}
     </a>
     {% if settings.is_live %}
@@ -25,17 +25,25 @@
     {% else %}
     <span class="mode-pill mode-demo">{{ icon('dot') }}Demo: sample results</span>
     {% endif %}
-    {% if nav != 'home' %}
     <nav class="main-nav" aria-label="Main">
       <ul>
-        {% for key, href, label in [('home', '/', 'Home'), ('test', '/test', 'Test a change'), ('results', '/results', 'See results'), ('prompts', '/prompts', 'Your prompts'), ('how', '/how-it-works', 'How it works')] %}
-        <li><a href="{{ href }}"{% if nav == key %} aria-current="page"{% endif %}>{{ label }}</a></li>
-        {% endfor %}
+        <li><a href="/"{% if nav != 'how' %} aria-current="{{ 'page' if nav == 'home' else 'true' }}"{% endif %}>Manage</a></li>
+        <li><a href="/how-it-works"{% if nav == 'how' %} aria-current="page"{% endif %}>How it works</a></li>
       </ul>
     </nav>
-    {% endif %}
   </div>
 </header>
+{% if (not settings.is_live or settings.is_public) and not ("session" in request.scope and request.session.get("strip_hidden")) %}
+<div class="demo-strip" role="region" aria-label="About this demo">
+  <div class="wrap demo-strip-inner">
+    <p>{% if settings.is_public %}This demo runs on Claude, with sample AI instructions for a fictional company, Northstar Systems. Your work here lasts up to 24 hours and may reset sooner.{% else %}This demo uses sample results for a fictional company, Northstar Systems. Your changes last until you close this browser.{% endif %}</p>
+    <form method="post" action="/demo/hide-strip">
+      <input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}">
+      <button class="strip-hide" type="submit">Hide<span class="visually-hidden"> this note</span></button>
+    </form>
+  </div>
+</div>
+{% endif %}
 <main id="main" class="wrap">
   {% if settings.fallback_notice %}{{ notice(settings.fallback_notice) }}{% endif %}
   {% block content %}{% endblock %}

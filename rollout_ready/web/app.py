@@ -1006,6 +1006,13 @@ def create_app(
         return problem(request, str(exc), status=409, heading="No room for more changes", info=True,
                        start_over=True)
 
+    @app.post("/demo/hide-strip")
+    async def hide_strip(request: Request):
+        """Hide the demo note for the rest of this browser session."""
+        form = await request.form()
+        request.session["strip_hidden"] = 1
+        return RedirectResponse(_safe_next(str(form.get("next", "")), "/"), status_code=303)
+
     @app.post("/demo/start-over")
     async def start_over(request: Request):
         """Clear this visit's demo changes: overrides and releases. Nothing on disk is touched."""
