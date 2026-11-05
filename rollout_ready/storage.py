@@ -22,6 +22,7 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
+from .evidence import AnswerBlob, EvaluationRecord, ReviewBlob
 from .models import Case, Override, Suite, Version, VersionResults
 from .records import LocalRecordStore, set_lock
 
@@ -30,6 +31,10 @@ VERSION_RE = re.compile(r"^v(\d+)\.md$")
 
 class SuiteError(Exception):
     """A suite file is missing or has a problem a person can fix."""
+
+
+class FinalRecordError(Exception):
+    """Someone tried to change an evaluation record that is already final. Final records never change."""
 
 
 def _friendly(path: Path, err: ValidationError) -> SuiteError:
@@ -77,6 +82,53 @@ class Store:
     def lock(self, suite_id: str):
         """A lock around read-modify-write operations on one set's records."""
         return set_lock(self.root / suite_id)
+
+    # answers and reviews: stored once, under their reuse keys (evidence.py) -----
+    def load_answer(self, suite_id: str, key: str) -> AnswerBlob | None:
+        data = self.records(suite_id).read(f"answers/{key}")
+        return AnswerBlob.model_validate(data) if data is not None else None
+
+    def save_answer(self, suite_id: str, blob: AnswerBlob, *, version_id: str, case: Case) -> None:
+        """Write once. version_id and case let a public session decide where it may go."""
+        self.records(suite_id).write_once(f"answers/{blob.key}", blob.model_dump(mode="json"))
+
+    def load_review(self, suite_id: str, key: str) -> ReviewBlob | None:
+        data = self.records(suite_id).read(f"reviews/{key}")
+        return ReviewBlob.model_validate(data) if data is not None else None
+
+    def save_review(self, suite_id: str, blob: ReviewBlob, *, version_id: str, case: Case) -> None:
+        self.records(suite_id).write_once(f"reviews/{blob.key}", blob.model_dump(mode="json"))
+
+    # evaluation records -----------------------------------------------------
+    def evaluation_ids(self, suite_id: str) -> list[str]:
+        """Oldest first: ids start with the time the test started."""
+        return [k.split("/", 1)[1] for k in self.records(suite_id).list("evaluations")]
+
+    def load_evaluation(self, suite_id: str, evaluation_id: str) -> EvaluationRecord | None:
+        data = self.records(suite_id).read(f"evaluations/{evaluation_id}")
+        return EvaluationRecord.model_validate(data) if data is not None else None
+
+    def save_evaluation(self, record: EvaluationRecord) -> None:
+        """Write a new record. Its id must be new."""
+        if not self.records(record.suite_id).write_once(f"evaluations/{record.id}", record.model_dump(mode="json")):
+            raise FinalRecordError(f"An evaluation called {record.id!r} already exists.")
+
+    def finish_evaluation(self, record: EvaluationRecord) -> None:
+        """The only update a record ever gets: from running to final (complete, incomplete or interrupted).
+
+        Refused, changing nothing, if the stored record is already final or the new one isn't.
+        """
+        if not record.final:
+            raise FinalRecordError("A record can only be updated to a final status.")
+
+        def change(current):
+            if current is None:
+                raise FinalRecordError(f"There is no evaluation called {record.id!r}.")
+            if current.get("status") != "running":
+                raise FinalRecordError(f"Evaluation {record.id!r} is final and can't be changed.")
+            return record.model_dump(mode="json")
+
+        self.records(record.suite_id).update(f"evaluations/{record.id}", change)
 
     # suites -----------------------------------------------------------
     def suite_ids(self) -> list[str]:

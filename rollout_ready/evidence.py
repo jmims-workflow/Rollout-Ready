@@ -53,7 +53,7 @@ def text_hash(text: str) -> str:
 
 def answer_key(*, version_text: str, example_input: str, model: str, repetition: int,
                settings: dict[str, Any] | None = None,
-               wrapper_revision: str = GENERATION_WRAPPER_REVISION) -> str:
+               wrapper_revision: str | None = None) -> str:
     """Same key means the same request to Claude, so the saved answer can be reused."""
     if repetition < 1:
         raise ValueError("repetitions are numbered from 1")
@@ -64,7 +64,7 @@ def answer_key(*, version_text: str, example_input: str, model: str, repetition:
         "model": model,
         "settings": GENERATION_SETTINGS if settings is None else settings,
         "repetition": repetition,
-        "wrapper_revision": wrapper_revision,
+        "wrapper_revision": wrapper_revision or GENERATION_WRAPPER_REVISION,
     })
 
 
@@ -75,22 +75,22 @@ def qualities_payload(rubric: list[Criterion]) -> list[dict[str, Any]]:
 
 
 def review_key(*, answer_hash: str, rubric: list[Criterion], reviewer_model: str,
-               reviewer_revision: str = REVIEWER_PROMPT_REVISION) -> str:
+               reviewer_revision: str | None = None) -> str:
     """Same key means the same answer reviewed the same way, so the saved review can be reused."""
     return _hash({
         "kind": "review",
         "answer_hash": answer_hash,
         "qualities": qualities_payload(rubric),
         "reviewer_model": reviewer_model,
-        "reviewer_revision": reviewer_revision,
+        "reviewer_revision": reviewer_revision or REVIEWER_PROMPT_REVISION,
     })
 
 
 def fingerprint(*, source: str, suite: Suite, cases: list[Case], candidate_id: str, candidate_text: str,
                 baseline_id: str, baseline_text: str, reviewer_model: str,
                 settings: dict[str, Any] | None = None,
-                wrapper_revision: str = GENERATION_WRAPPER_REVISION,
-                reviewer_revision: str = REVIEWER_PROMPT_REVISION) -> str:
+                wrapper_revision: str | None = None,
+                reviewer_revision: str | None = None) -> str:
     """A hash over everything that affects generation, scoring or comparison.
 
     Example names, labels and kinds are left out (they change no answer, score or
@@ -110,8 +110,8 @@ def fingerprint(*, source: str, suite: Suite, cases: list[Case], candidate_id: s
         "threshold": suite.threshold,
         "deal_breaker_cutoff": DEAL_BREAKER_CUTOFF,
         "reviewer_model": reviewer_model,
-        "wrapper_revision": wrapper_revision,
-        "reviewer_revision": reviewer_revision,
+        "wrapper_revision": wrapper_revision or GENERATION_WRAPPER_REVISION,
+        "reviewer_revision": reviewer_revision or REVIEWER_PROMPT_REVISION,
     })
 
 

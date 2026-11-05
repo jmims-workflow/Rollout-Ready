@@ -8,6 +8,7 @@ from rollout_ready.judge import judge_output
 from rollout_ready.provider import (CUT_OFF_MESSAGE, MAX_RETRIES, ClaudeProvider, Generation, ProviderError,
                                     call_with_retries)
 from rollout_ready.runner import run_version
+from rollout_ready import evaluate
 from rollout_ready.storage import Store
 
 
@@ -85,17 +86,15 @@ def test_cut_off_answer_is_not_saved_scored_or_retried(suites_copy):
     v = store.add_version("partner-outreach", "Prompt", "Note")
     # Examples 1 and 2 are fine (answer then review), then the third answer is cut off.
     fake = FakeProvider(script=["ok", "ok", "ok", "ok", "cut_off"])
-    with pytest.raises(ProviderError) as err:
-        run_version(store, "partner-outreach", v.id, fake, "j", sleep=Waits())
-    assert str(err.value) == CUT_OFF_MESSAGE and err.value.kind == "cut_off"
-    assert fake.generate_attempts == 3 and fake.judge_attempts == 2  # no retry, no review of the cut-off answer
-    saved = store.load_runs("partner-outreach", v.id)
-    assert len(saved.cases) == 2  # results saved before it are kept
-    assert all("just stops" not in r.output for c in saved.cases.values() for r in c.runs)
+    run_version(store, "partner-outreach", v.id, fake, "j", sleep=Waits())  # no error: the test carries on
+    assert fake.generate_attempts == 6 and fake.judge_attempts == 5  # no retry, no review of the cut-off answer
+    record = evaluate.latest_record(store, "partner-outreach", v.id, v.id)
+    assert [i.status for i in record.items].count("cut_off") == 1 and record.status == "incomplete"
+    assert next(i for i in record.items if i.status == "cut_off").message == CUT_OFF_MESSAGE
     # Retry runs it again for real, instead of reusing the cut-off answer.
     again = FakeProvider()
     run_version(store, "partner-outreach", v.id, again, "j", sleep=Waits())
-    assert again.generate_calls == 4
+    assert again.generate_calls == 1
 
 
 def test_temporary_failures_retry_at_most_twice_then_stop_with_saved_results_kept(suites_copy):
@@ -108,7 +107,8 @@ def test_temporary_failures_retry_at_most_twice_then_stop_with_saved_results_kep
     assert err.value.temporary
     assert fake.generate_attempts == 1 + 3  # one good answer, then 3 attempts (2 retries) at the second
     assert len(waits) == 2
-    assert len(store.load_runs("partner-outreach", v.id).cases) == 1
+    record = evaluate.latest_record(store, "partner-outreach", v.id, v.id)
+    assert [i.status for i in record.items].count("complete") == 1
 
 
 def test_a_retry_that_succeeds_counts_failed_tokens_and_scores_only_the_good_answer(suites_copy):
@@ -116,10 +116,10 @@ def test_a_retry_that_succeeds_counts_failed_tokens_and_scores_only_the_good_ans
     v = store.add_version("partner-outreach", "Prompt", "Note")
     fake = FakeProvider(script=[busy(input_tokens=40, output_tokens=5)])
     run_version(store, "partner-outreach", v.id, fake, "j", sleep=Waits())
-    saved = store.load_runs("partner-outreach", v.id)
-    first = saved.cases[next(iter(saved.cases))].runs[0]
-    assert first.input_tokens == 100 + 40 and first.output_tokens == 50 + 5
-    assert len(saved.cases) == 6 and fake.generate_calls == 6 and fake.judge_calls == 6
+    record = evaluate.latest_record(store, "partner-outreach", v.id, v.id)
+    first = store.load_answer("partner-outreach", record.items[0].answer_key)
+    assert (first.input_tokens + first.failed_input_tokens, first.output_tokens + first.failed_output_tokens) == (100 + 40, 50 + 5)
+    assert record.status == "complete" and fake.generate_calls == 6 and fake.judge_calls == 6
 
 
 # the AI reviewer ------------------------------------------------------------------

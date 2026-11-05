@@ -1,3 +1,4 @@
+import hashlib
 import re
 import shutil
 import socket
@@ -49,7 +50,9 @@ class FakeProvider:
         self.generate_calls += 1
         if step == "cut_off":
             return Generation(f"Reply on Friday about: {user_input[:40]} and then it just stops", 100, 8000, "max_tokens")
-        return Generation(f"Reply on Friday about: {user_input[:40]}", 100, 50)
+        # Like Claude, different instructions give a different answer, so a review is never shared by accident.
+        tag = hashlib.sha256(prompt.encode()).hexdigest()[:6]
+        return Generation(f"Reply on Friday about: {user_input[:40]} ({tag})", 100, 50)
 
     def structured(self, *, model, system, user, schema):
         from rollout_ready.provider import ProviderError

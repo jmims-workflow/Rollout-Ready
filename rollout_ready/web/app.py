@@ -23,15 +23,15 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from starlette.middleware.sessions import SessionMiddleware
 
-from .. import config, public, scoring
+from .. import config, evaluate, public, scoring
 from ..compare import (MIX_NUDGE, Comparison, build_comparison, example_mix, load_results,
-                       missing_cases, needs_harder_examples, summary_text)
+                       needs_harder_examples, summary_text)
 from ..config import Settings, length_problem, load_settings
 from ..demo_criteria import SAMPLE_CRITERIA, SAMPLE_SUITE_NAME, SAMPLE_WHO
 from ..judge import draft_criteria
 from ..models import CASE_KINDS, Case, Check, Criterion, Override, Suite, Version
 from ..provider import ClaudeProvider, Provider, ProviderError
-from ..runner import Job, JobManager, estimate_sentence, pending_for, run_versions
+from ..runner import Job, JobManager, change_test_estimate, estimate_sentence, pending_for, run_versions
 from ..public import SessionStore, Sessions, SharedResults, Usage
 from ..storage import Store, SuiteError, slugify
 
@@ -201,7 +201,11 @@ def create_app(
             pair = default_pair(s, st.versions(s.id))
             if not pair or pair[0] == pair[1]:
                 continue
-            ran = load_results(st, s.id, pair[1], settings.is_live).ran_at
+            if settings.is_live:
+                rec = evaluate.latest_record(st, s.id, *pair)
+                ran = (rec.finished or rec.started) if rec else ""
+            else:
+                ran = load_results(st, s.id, pair[1], False).ran_at
             if best is None or ran > best[0]:
                 best = (ran, s.id, *pair)
         return best[1:] if best else None
@@ -245,7 +249,8 @@ def create_app(
     def comparison(request: Request, suite_id: str, current: str, new: str) -> Comparison:
         st = store_for(request)
         overrides = get_overrides(request, suite_id, current, new) if current != new else {}
-        comp = build_comparison(st, suite_id, current, new, settings.is_live, overrides)
+        comp = build_comparison(st, suite_id, current, new, settings.is_live, overrides,
+                                reviewer_model=settings.judge_model)
         if settings.is_public and not comp.complete:
             # Public visitors still see the demo's sample comparisons. A comparison is all
             # real results or all sample results, never a mix.
@@ -289,9 +294,10 @@ def create_app(
                     banner += f" It broke {_plural(comp.worse, 'example')}."
         saved = 0
         for s in suites:
+            real = evaluate.versions_with_results(st, s.id) if settings.is_live else set()
             for v in st.versions(s.id):
-                if (load_results(st, s.id, v.id, settings.is_live).cases
-                        or settings.is_public and load_results(st, s.id, v.id, False).cases):
+                if (v.id in real or (not settings.is_live or settings.is_public)
+                        and load_results(st, s.id, v.id, False).cases):
                     saved += 1
         teams = [s.team.lower() for s in suites if s.team]
         prompts_meta = _plural(len(suites), "prompt") + (": " + ", ".join(dict.fromkeys(teams)) if teams else "")
@@ -433,7 +439,7 @@ def create_app(
         The version you're trying runs every example. The version you compare with runs any
         example it has no real results for, which is all of them when it has only sample results.
         """
-        against_todo = len(missing_cases(st, suite, cases, against, live=True))
+        against_todo, _calls = change_test_estimate(st, suite.id, against, settings.judge_model)
         return against_todo, estimate_sentence(len(cases) + against_todo, suite.repeats)
 
     def test_context(request: Request, suite_id: str, against: str) -> dict:
@@ -520,7 +526,7 @@ def create_app(
         try:
             st.load_version(suite_id, current), st.load_version(suite_id, new)
             err = too_many_examples(st.load_cases(suite_id))
-            nothing_to_run = not pending_for(st, suite_id, [current, new])
+            nothing_to_run = not pending_for(st, suite_id, [current, new], settings.judge_model)
         except SuiteError as exc:
             return problem(request, str(exc), status=404)
         done = results_url(suite_id, current, new)
@@ -764,14 +770,10 @@ def create_app(
             suite = st.load_suite(suite_id)
             cases = st.load_cases(suite_id)
             against = str(form.get("against", ""))
-            if against:
-                try:
-                    st.load_version(suite_id, against)
-                    estimate = test_estimate(st, suite, cases, against)[1]
-                except SuiteError:
-                    estimate = estimate_sentence(len(cases), suite.repeats)
-            else:
-                estimate = estimate_sentence(len(cases), suite.repeats)
+            if against not in {v.id for v in st.versions(suite_id)}:
+                # Count the version in use too, so the estimate never comes in low.
+                against = in_use(suite, st.versions(suite_id))
+            estimate = test_estimate(st, suite, cases, against)[1]
             return {"ok": True, "case": case.model_dump(), "kind_label": case.kind_label, "count": len(cases),
                     "estimate": estimate,
                     "nudge": needs_harder_examples(cases)}

@@ -473,7 +473,9 @@ def test_live_new_prompt_saves_deal_breakers_kinds_and_team(live, live_settings)
     assert [c.deal_breaker for c in suite.rubric] == [True, False]
     assert [c.kind for c in store.load_cases("renewal-risk-summary")] == ["messy", "everyday"]
     assert suite.checks[1].value == [chr(0x2014), "synergy"]
-    assert len(store.load_runs("renewal-risk-summary", "v1").cases) == 2
+    from rollout_ready import evaluate
+    record = evaluate.latest_record(store, "renewal-risk-summary", "v1", "v1")
+    assert record.status == "complete" and len(record.items) == 2
 
 
 def test_live_suggest_qualities_fills_the_deal_breaker_box(live):
@@ -513,3 +515,13 @@ def test_demo_is_default_even_with_a_key(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
     s = load_settings(SUITES)
     assert s.mode == "demo" and s.api_key is None and "sk-test" not in repr(s)
+
+
+def test_add_example_estimate_counts_the_version_in_use_when_none_is_given(live):
+    """Without a valid version to compare with, the estimate still counts the version in use, so it never comes in low."""
+    for against in ("", "v99"):
+        r = live.post("/prompts/followup-email/examples",
+                      data={"name": f"New one {against}", "input": "Notes", "against": against},
+                      headers={"X-Requested-With": "fetch"})
+        n = r.json()["count"]
+        assert r.json()["estimate"].startswith(f"This will make about {n * 2 * 2} calls to Claude")

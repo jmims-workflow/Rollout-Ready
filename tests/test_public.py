@@ -149,8 +149,9 @@ def test_demo_results_are_shared_but_visitor_examples_are_not(app, data_dir):
     a, b = visitor(app), visitor(app, ip="198.51.100.7")
     run_test(a)
     assert app.fake.generate_calls == 16
-    cached = json.loads((data_dir / "shared" / "followup-email" / "v2.json").read_text())
-    assert len(cached["cases"]) == 8
+    shared_followup = data_dir / "shared" / "followup-email"
+    assert len(list((shared_followup / "answers").glob("*.json"))) == 8  # the demo version's 8 answers only
+    assert len(list((shared_followup / "reviews").glob("*.json"))) == 8
 
     # The next visitor reuses the demo version's real results and only runs their own version.
     run_test(b, text="Another visitor's version.")
@@ -159,19 +160,19 @@ def test_demo_results_are_shared_but_visitor_examples_are_not(app, data_dir):
     # An example a visitor adds runs for them, but its result is never shared.
     a.post("/prompts/webinar-invite/examples", data={"name": "Alice case", "input": "Alice's private input"})
     run_test(a, suite="webinar-invite", against="v2")
-    shared = data_dir / "shared" / "webinar-invite" / "v2.json"
-    entries = json.loads(shared.read_text())["cases"]
-    assert len(entries) == 6 and not any("alice" in k for k in entries)
-    assert "Alice" not in shared.read_text()
+    shared = data_dir / "shared" / "webinar-invite"
+    shared_text = lambda: "".join(p.read_text() for p in shared.rglob("*.json"))  # noqa: E731
+    assert len(list((shared / "answers").glob("*.json"))) == 6  # the demo examples, not Alice's
+    assert "Alice" not in shared_text()
 
     # Another visitor who edits a demo example gets their own result for it, not the shared one.
     c = visitor(app, ip="192.0.2.9")
-    case_id = next(iter(entries))
+    case_id = app.state.store.load_cases("webinar-invite")[0].id
     c.post(f"/prompts/webinar-invite/examples/{case_id}", data={"name": "Edited", "input": "Carol's own input"})
     before = app.fake.generate_calls
     run_test(c, suite="webinar-invite", against="v2")
     assert app.fake.generate_calls == before + 6 + 1  # her version on 6, the demo version on her edited one
-    assert "Carol" not in shared.read_text()
+    assert "Carol" not in shared_text()
 
 
 # limits --------------------------------------------------------------------------
@@ -280,7 +281,8 @@ def test_local_live_mode_unchanged(suites_copy, data_dir):
         assert r.status_code == 303
         wait(app)
     assert (suites_copy / "followup-email" / "versions" / "v7.md").exists()
-    assert (suites_copy / "followup-email" / "runs" / "v2.json").exists()
+    runs = suites_copy / "followup-email" / "runs"
+    assert list((runs / "answers").glob("*.json")) and len(list((runs / "evaluations").glob("*.json"))) == 3
     assert not data_dir.exists()
 
 

@@ -1,7 +1,8 @@
 """Live runs: run only what is missing, then judge each output on its own.
 
-Results are saved after every case, so a failed call never loses work.
-Demo mode never comes through here.
+Every test goes through evaluate.run_evaluation, which reuses saved answers and
+reviews by key, saves each new one as soon as it is made (so a failed call never
+loses work), and writes one evaluation record. Demo mode never comes through here.
 """
 
 from __future__ import annotations
@@ -10,14 +11,13 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Callable
 
+from . import evaluate
 from .compare import missing_cases
-from .judge import judge_output
-from .models import CaseResult, Run, VersionResults
-from .provider import CUT_OFF_MESSAGE, Provider, ProviderError, call_with_retries
-from .storage import Store, input_hash, rubric_hash
+from .config import DEFAULT_JUDGE_MODEL
+from .provider import Provider, ProviderError
+from .storage import Store
 
 SECONDS_PER_CALL = 4
 
@@ -53,57 +53,37 @@ def run_version(
     progress: Callable[[int, int, str], None] | None = None,
     sleep: Callable[[float], None] = time.sleep,
 ) -> int:
-    """Run and judge the cases that have no usable results yet. Returns calls made.
+    """Score one version on its own (a baseline test). Returns calls made.
 
-    Temporary failures are retried at most twice per call. An answer cut off at the
-    length limit is never saved or scored, and stops the run like any other failure,
-    so the results saved before it are kept.
+    Only answers and reviews that aren't saved yet are made. An answer cut off at
+    the length limit is never saved or scored and leaves that item incomplete.
+    """
+    return evaluate.run_evaluation(store, suite_id, version_id, version_id, provider, judge_model,
+                                   progress, sleep).calls
+
+
+def change_test_estimate(store: Store, suite_id: str, against_id: str,
+                         reviewer_model: str = DEFAULT_JUDGE_MODEL) -> tuple[int, int]:
+    """For Test a change: (examples the compared version still needs, calls the test can make at most).
+
+    The version you're trying is new, so every example and repetition needs an answer and
+    its review. The compared version needs both for any example still missing either. A
+    whole example is counted (answer and review, every repetition) whenever anything is
+    missing, so the estimate is never lower than what a run makes. Retries of a failed call
+    (at most 2 each) are not included.
     """
     suite = store.load_suite(suite_id)
     cases = store.load_cases(suite_id)
-    version = store.load_version(suite_id, version_id)
-    todo = missing_cases(store, suite, cases, version_id, live=True)
-    total = len(todo) * suite.repeats * 2
-    done = 0
-    saved = store.load_runs(suite_id, version_id) or VersionResults(version=version_id)
-    saved.model, saved.judge_model = suite.model, judge_model
-    for case in todo:
-        runs = []
-        for _ in range(suite.repeats):
-            if progress:
-                progress(done, total, f"Writing an answer for “{case.name}”")
-            made = call_with_retries(
-                lambda: provider.generate(model=suite.model, prompt=version.text, user_input=case.input), sleep=sleep)
-            gen = made.value
-            if gen.cut_off:
-                raise ProviderError(CUT_OFF_MESSAGE, kind="cut_off",
-                                    input_tokens=made.failed_input_tokens + gen.input_tokens,
-                                    output_tokens=made.failed_output_tokens + gen.output_tokens)
-            done += 1
-            if progress:
-                progress(done, total, f"Scoring the answer for “{case.name}”")
-            scores, parsed = judge_output(provider, judge_model, suite, case, gen.text, sleep=sleep)
-            done += 1
-            runs.append(Run(
-                output=gen.text, scores=scores,
-                input_tokens=gen.input_tokens + made.failed_input_tokens,
-                output_tokens=gen.output_tokens + made.failed_output_tokens,
-                judge_input_tokens=parsed.input_tokens, judge_output_tokens=parsed.output_tokens,
-            ))
-        saved.cases[case.id] = CaseResult(
-            model=suite.model, rubric_hash=rubric_hash(suite), input_hash=input_hash(case), runs=runs,
-        )
-        saved.ran_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        store.save_runs(suite_id, saved)
-    if progress:
-        progress(total, total, "Done")
-    return done
+    against_todo = len(missing_cases(store, suite, cases, against_id, live=True, reviewer_model=reviewer_model))
+    return against_todo, (len(cases) + against_todo) * suite.repeats * 2
 
 
-def pending_for(store: Store, suite_id: str, version_ids: list[str]) -> int:
+def pending_for(store: Store, suite_id: str, version_ids: list[str], reviewer_model: str = DEFAULT_JUDGE_MODEL) -> int:
+    """Examples, summed over these versions, that still need an answer or a review."""
     suite = store.load_suite(suite_id)
     cases = store.load_cases(suite_id)
-    return sum(len(missing_cases(store, suite, cases, v, live=True)) for v in dict.fromkeys(version_ids))
+    return sum(len(missing_cases(store, suite, cases, v, live=True, reviewer_model=reviewer_model))
+               for v in dict.fromkeys(version_ids))
 
 
 # background jobs for the web app --------------------------------------------
@@ -155,15 +135,15 @@ class JobManager:
         return self.jobs.get(job_id)
 
 
-def run_versions(store: Store, suite_id: str, version_ids: list[str], provider: Provider, judge_model: str):
-    """Work function for a job that fills in every missing result for these versions."""
+def run_versions(store: Store, suite_id: str, version_ids: list[str], provider: Provider, judge_model: str,
+                 sleep: Callable[[float], None] = time.sleep):
+    """Work function for a job: test the second version against the first (or score one version alone).
+
+    Writes one evaluation record, reusing every saved answer and review that matches.
+    """
+    ids = list(dict.fromkeys(version_ids))
+    baseline, candidate = ids[0], ids[-1]
+
     def work(progress):
-        offset_total = pending_for(store, suite_id, version_ids) * store.load_suite(suite_id).repeats * 2
-        done_so_far = 0
-
-        def scaled(done, total, message):
-            progress(done_so_far + done, offset_total, message)
-
-        for v in dict.fromkeys(version_ids):
-            done_so_far += run_version(store, suite_id, v, provider, judge_model, scaled)
+        evaluate.run_evaluation(store, suite_id, baseline, candidate, provider, judge_model, progress, sleep)
     return work

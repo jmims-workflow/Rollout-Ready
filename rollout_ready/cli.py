@@ -17,7 +17,8 @@ from . import scoring
 from .compare import build_comparison, summary_text
 from .config import load_settings
 from .provider import ClaudeProvider, ProviderError
-from .runner import estimate_sentence, pending_for, run_version
+from .evaluate import run_evaluation
+from .runner import estimate_sentence, pending_for
 from .storage import Store, SuiteError
 
 app = typer.Typer(add_completion=False, help="Rollout Ready: test a prompt change before your team sees it.")
@@ -57,14 +58,13 @@ def run(
     store = Store(settings.suites_dir)
     try:
         if settings.is_live:
-            todo = pending_for(store, suite, [current, new])
+            todo = pending_for(store, suite, [current, new], settings.judge_model)
             if todo:
                 typer.echo(estimate_sentence(todo, store.load_suite(suite).repeats))
                 provider = ClaudeProvider(settings.api_key or "")
-                for v in (current, new):
-                    run_version(store, suite, v, provider, settings.judge_model,
-                                lambda d, t, m: typer.echo(f"  {d}/{t} {m}"))
-        comp = build_comparison(store, suite, current, new, settings.is_live)
+                run_evaluation(store, suite, current, new, provider, settings.judge_model,
+                               lambda d, t, m: typer.echo(f"  {d}/{t} {m}"))
+        comp = build_comparison(store, suite, current, new, settings.is_live, reviewer_model=settings.judge_model)
     except (SuiteError, ProviderError) as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(2)
