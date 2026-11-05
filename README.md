@@ -21,8 +21,8 @@ Many teams rely on one shared prompt: a custom GPT, a Gem, a Claude Project, a C
 1. **Your prompts.** Each prompt has its versions, 6 to 8 saved **examples** (only inputs, never ideal answers), and a description of **what good looks like**: 3 to 5 **qualities**, each scored 1 to 5, with one or two **deal-breakers**.
 2. **Test a change.** Paste the version you're trying and a one-line note on what changed.
 3. It runs on every example. Each output gets **quick checks** (plain rules like a word limit) and is scored blind by the **AI reviewer** (Claude), with a one-sentence reason for every score.
-4. **See results.** Each example is marked **Got worse**, **Got better** or **About the same**, and you get one verdict: Ready to roll out, No clear difference, Not ready to roll out, or Keep the current version. You also get a summary to paste into Slack or email.
-5. **Disagree if you need to.** On any example you can say "I disagree with the AI reviewer". Your call, with a one-line reason, replaces the AI reviewer's for that pair of versions.
+4. **See results.** Each example is marked **Got worse**, **Got better** or **About the same**, and you get one verdict: Ready to roll out, Needs review, Not ready to roll out, No clear difference, or Test incomplete when something is missing. You also get a summary to paste into Slack or email.
+5. **Disagree if you need to.** On any example you can say "I disagree with the AI reviewer". Your call, with a one-line reason, replaces the AI reviewer's for those results, but a missed deal-breaker still blocks.
 
 The full rules for each result and verdict are in [How it works and why](docs/design.md).
 
@@ -30,7 +30,7 @@ The full rules for each result and verdict are in [How it works and why](docs/de
 
 - **One broken example matters more than the average.** In the demo, version 3 of the follow-up email raised the average from 3.6 to 3.9 but stopped answering customers' questions on 2 examples, so it is "Not ready to roll out."
 - **Deal-breakers block a rollout.** If the version you're trying misses a deal-breaker (a score of 2 or lower) on any example, it can't be "Ready to roll out", whatever the average says.
-- **People get the last word.** Overrides need a one-line reason, apply to one pair of versions, never change stored scores, and are listed on the verdict and in the shared summary.
+- **People get the last word.** Overrides need a one-line reason, apply only to the results they were made on, never change stored scores or hide a missed deal-breaker, and are listed on the verdict and in the shared summary.
 - **Honest about the evidence.** Every verdict says "Based on N examples. Even when a version is ready, spot-check real outputs in its first week."
 - **A good example mix.** Each example is Everyday, Messy or incomplete, Complicated, or Broke before, and the app nudges you when there are no messy or complicated ones.
 - **Blind, independent scoring.** The AI reviewer scores one output at a time and never sees which version wrote it, or the other version's output.
@@ -39,7 +39,7 @@ The full rules for each result and verdict are in [How it works and why](docs/de
 
 ## Testing
 
-`pytest` covers the scoring edges, all four verdicts, every demo number, overrides, public live mode limits, and scans that fail on engineering words in any page or an em dash in any file. The full list is in [Under the hood](docs/architecture.md#what-the-tests-cover).
+`pytest` covers the scoring edges, every verdict, every demo number, overrides, public live mode limits, and scans that fail on engineering words in any page or an em dash in any file. The full list is in [Under the hood](docs/architecture.md#what-the-tests-cover).
 
 ## Limitations
 
@@ -47,6 +47,7 @@ The full rules for each result and verdict are in [How it works and why](docs/de
 - The same model family writing and reviewing may favor its own style.
 - Tests run on Claude. If your team's assistant runs on another model, results show how the prompt behaves on Claude, which may differ.
 - 6 to 8 examples are a smoke test, not statistics.
+- The time and call estimate counts calls, not retries: a call that briefly fails can be tried up to 2 more times.
 - There are no user accounts, and saved work does not persist on Cloud Run.
 
 More are listed in [Known limitations](docs/design.md#known-limitations).
@@ -83,7 +84,7 @@ export ANTHROPIC_API_KEY=your-key-here
 rollout serve
 ```
 
-For teams that keep prompts in a repo, the command line exits with code 1 when a version is not ready:
+For teams that keep prompts in a repo, the command line exits with code 0 when a version is ready or makes no clear difference, 1 when it is not ready or needs review, and 2 when the test is incomplete:
 
 ```bash
 rollout run followup-email --current v2 --new v3

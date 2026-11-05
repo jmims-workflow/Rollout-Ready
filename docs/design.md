@@ -12,7 +12,7 @@ The person who owns a shared prompt in a sales, marketing or partnerships team: 
 2. **Test a change.** Paste the version you're trying and a one-line note on what changed.
 3. It runs on every example. Each output gets **quick checks** (plain rules like a word limit) and is scored blind by the **AI reviewer** (Claude), with a one-sentence reason for every score.
 4. **See results.** Each example is marked **Got worse**, **Got better** or **About the same**, and you get one verdict, a summary to paste into Slack or email, and a line saying how many examples it is based on.
-5. **Disagree if you need to.** On any example you can say "I disagree with the AI reviewer". Your call, with a one-line reason, replaces the AI reviewer's for that pair of versions and the verdict is worked out again.
+5. **Disagree if you need to.** On any example you can say "I disagree with the AI reviewer". Your call, with a one-line reason, replaces the AI reviewer's for those results and the verdict is worked out again. A missed deal-breaker still blocks.
 
 | An example... | When |
 | --- | --- |
@@ -22,18 +22,19 @@ The person who owns a shared prompt in a sales, marketing or partnerships team: 
 
 | Verdict | When |
 | --- | --- |
+| Test incomplete | An answer or review is missing, cut off or failed. There's no verdict until it's done |
+| Not ready to roll out | A deal-breaker is missed on any example, or some got worse and no more got better |
+| Needs review | Some got worse, more got better, and no deal-breaker is missed |
 | Ready to roll out | Nothing got worse, at least one got better, and no deal-breaker is missed |
-| No clear difference | Nothing got worse or better |
-| Not ready to roll out | Some got worse but more got better, or it would be ready except that a deal-breaker is missed |
-| Keep the current version | Some got worse, and no more got better |
+| No clear difference | Nothing got worse or better, and no deal-breaker is missed |
 
-A deal-breaker is missed when the AI reviewer scores it 2 or lower.
+A deal-breaker is missed when the AI reviewer scores it 2 or lower, even once when an example runs more than once.
 
 ## Design principles
 
 1. **One broken example matters more than the average.** The verdict counts examples that got worse, not the average. In the demo, version 3 of the follow-up email raised the average from 3.6 to 3.9 but stopped answering customers' questions on 2 examples, so it is "Not ready to roll out."
 2. **Deal-breakers block a rollout.** Some qualities must never go wrong: the facts, the dates, answering what was asked. If the version you're trying misses a deal-breaker on any example, it can't be "Ready to roll out", whatever the average says, and the verdict names the deal-breaker and how many examples missed it.
-3. **People get the last word.** The AI reviewer can be wrong. A person can override any example's result with a required one-line reason. Overrides apply to that pair of versions only, never change the AI reviewer's stored scores, and are listed on the verdict and in the shared summary so nobody is surprised.
+3. **People get the last word.** The AI reviewer can be wrong. A person can override any example's result with a required one-line reason. Overrides apply only to the results they were made on, never change the AI reviewer's stored scores or hide a missed deal-breaker, and are listed on the verdict and in the shared summary so nobody is surprised.
 4. **Honest about the evidence.** Every verdict says "Based on N examples. Even when a version is ready, spot-check real outputs in its first week." 6 to 8 good examples catch most breakages; they can't prove a prompt will never break.
 5. **A good example mix.** Each example is Everyday, Messy or incomplete, Complicated, or Broke before. Results show the mix, and the app nudges you when there are no messy or complicated examples, because that is where prompts usually break.
 6. **Blind, independent scoring.** The AI reviewer scores one output at a time and never sees which version wrote it, or the other version's output. That also means results are saved per version, so only the version you're trying needs to run.

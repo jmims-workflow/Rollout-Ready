@@ -30,7 +30,7 @@ Every word a user sees (pages, buttons, labels, verdict sentences, the copied su
 | Rubric tab | What good looks like |
 | Mode pill | "Demo: sample results" or "Live: runs on Claude" |
 
-Never show the 0.5 threshold as a number on a results screen; say "a move of half a point or more". The verdict names ("Keep the current version" etc.) stay as they are.
+Never show the 0.5 threshold as a number on a results screen; say "a move of half a point or more". The verdict names (Ready to roll out, Not ready to roll out, Needs review, No clear difference, Test incomplete) stay as they are.
 
 ## Run and test
 
@@ -46,26 +46,35 @@ Live mode: `ROLLOUT_MODE=live` plus `ANTHROPIC_API_KEY`. Public live mode adds `
 ## Layout
 
 - `rollout_ready/scoring.py` scoring and verdict rules (pure functions)
-- `rollout_ready/compare.py` builds a comparison from saved results; shared by demo, live, web and CLI
+- `rollout_ready/compare.py` builds a comparison from an evaluation record; shared by demo, live, web and CLI
+- `rollout_ready/evidence.py` reuse keys, the evidence fingerprint, and record shapes (answers, reviews, items, evaluations, override events)
+- `rollout_ready/evaluate.py` runs only what is missing and writes one evaluation record per test; builds demo records from `recorded/`
+- `rollout_ready/releases.py` release history, derived status (In use, Retired, Draft), confirmation checks, one-time tokens
+- `rollout_ready/records.py` the storage interface: read, write-once, compare-and-swap update, list
+- `rollout_ready/demo_session.py` demo overrides and releases in the signed cookie, in a short form with a size budget
 - `rollout_ready/checks.py` automatic checks
 - `rollout_ready/provider.py` the only module that calls a model (Claude via `messages.parse`)
 - `rollout_ready/judge.py` judge and criteria-drafter prompts
-- `rollout_ready/runner.py` live runs (only missing results) and background jobs
-- `rollout_ready/public.py` public live mode: per-visitor `SessionStore`, shared demo results cache, usage limits, Origin check
-- `rollout_ready/storage.py` suite files: `suites/<id>/suite.yaml, cases.yaml, versions/vN.md, recorded/, runs/` (live overrides in `runs/overrides.json`)
+- `rollout_ready/runner.py` estimates, the Test a change estimate, and background jobs
+- `rollout_ready/public.py` public live mode: per-visitor `SessionStore`, shared answers and reviews for demo versions, usage limits, Origin check
+- `rollout_ready/storage.py` suite files: `suites/<id>/suite.yaml, cases.yaml, versions/vN.md, recorded/, history.json`, and records under `runs/` (`answers/`, `reviews/`, `evaluations/`, `releases.json`, `override-events.json`)
 - `rollout_ready/web/` FastAPI app, Jinja2 templates, plain CSS, small vanilla JS. Start screen at `/`; old URLs `/suites` and `/scoring` redirect.
-- Demo prompts: `followup-email` (Sales, featured v2 to v3), `partner-outreach` (Partnerships), `webinar-invite` (Marketing).
+- Demo prompts: `followup-email` (Sales, featured v2 to v3), `partner-outreach` (Partnerships), `webinar-invite` (Marketing). Each has `history.json`: version 2 is in use for all three; webinar version 2 is a roll out anyway on a No clear difference result.
 
 ## Scoring rules
 
 - Criterion score 1 to 5. Case score = mean of criteria, averaged across repeats.
 - Change = new minus current, rounded to 2 decimals before comparing.
-- Deal-breaker (`deal_breaker: true` on a criterion) is missed when its mean score is 2 or lower (`DEAL_BREAKER_CUTOFF`).
+- Deal-breaker (`deal_breaker: true` on a criterion) is missed when the reviewer scores it 2 or lower (`DEAL_BREAKER_CUTOFF`) in any repetition, even if the average across repetitions is higher. Results name the example and repetition.
 - Worse: change <= -threshold, a check that passed now fails, or the new version newly misses a deal-breaker.
 - Better: change >= threshold, or a check that failed now passes. Else no clear change.
-- Verdict: 0 worse and >= 1 better "Ready to roll out"; 0 and 0 "No clear difference"; some worse and more better than worse "Not ready to roll out"; otherwise "Keep the current version". Never "Ready" while the new version misses a deal-breaker on any non-overridden example (it becomes "Not ready").
-- Live mode reads only `runs/`, never `recorded/`. Any example either version lacks live results for runs for real. Behind the scenes labels each version "Sample results" or "Real results".
-- Overrides replace one example's result for one pair of versions, never change stored scores, and lift that example's deal-breaker block. Live: files; demo: signed session cookie.
+- Verdicts, in this order, after overrides: (1) "Test incomplete" if any answer or review is missing, cut off or failed (no verdict); (2) "Not ready to roll out" if the new version misses a deal-breaker on any example in any repetition, or at least one got worse and no more got better than got worse; (3) "Needs review" if some got worse, more got better, and no deal-breaker was missed; (4) "Ready to roll out" if none got worse, at least one got better, and no deal-breaker was missed; (5) "No clear difference" otherwise. "Keep the current version" no longer exists.
+- `rollout run` exits 0 for Ready to roll out and No clear difference, 1 for Not ready to roll out and Needs review, 2 for Test incomplete or an error.
+- Reuse keys (`evidence.py`): an answer is reused only when the version text, example input, model, generation settings, repetition and wrapper revision all match; a review only when the answer's text, every quality field (deal-breaker flags included), reviewer model and reviewer prompt revision match. Quick checks are in neither key: changing one reruns nothing and recomputes into a new record. The evidence fingerprint covers everything that affects generation, scoring or comparison. Bump `REVIEWER_PROMPT_REVISION` or `GENERATION_WRAPPER_REVISION` when the reviewer prompt or the generation call changes (`tests/test_evidence.py` fails until you do).
+- Every live test writes one evaluation record (running, then final once: complete, incomplete or interrupted). A final record never changes. Demo records are built from `recorded/` the same way every time and never written. Live mode reads only `runs/`, never `recorded/`; results saved before V3 show as incomplete and are never reused. Behind the scenes labels each version "Sample results" or "Real results".
+- Cut-off answers or reviews are incomplete items and never retried automatically. Temporary failures retry at most twice (our code; the SDK's retries are off).
+- Overrides belong to one evaluation's evidence (fingerprint plus example), are append-only (removing one appends a removal event), never change stored scores, never carry over to changed evidence, and never hide or lift a deal-breaker miss. Live: `runs/override-events.json`; demo: signed session cookie.
+- Release boundary: Rollout Ready records a person's decision and never updates the external tool. Release history is append-only (baseline, rollout, exception, return); In use, Retired and Draft are derived from it, never stored. A rollout relies on a saved, complete, current evaluation against the version in use; Roll out anyway needs a reason, the deal-breaker box on Not ready, and an acknowledgment when a different version is now in use, and keeps its verdict; Put back into use needs a reason and relies on no test. Every check runs again on submit, and a one-time token turns a double submit into the existing release.
 - Example kinds: everyday, messy, complicated, broke_before. Nudge when there are no messy or complicated examples.
 - Show scores to one decimal place. Demo numbers are pinned by `tests/test_demo_data.py`; change demo data only if those still pass.
 

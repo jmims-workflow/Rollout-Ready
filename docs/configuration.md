@@ -8,7 +8,7 @@ Back to the [README](../README.md). For hosting, see [Deploy](deploy.md).
 rollout serve
 ```
 
-Open http://127.0.0.1:8080. Demo mode is the default even if an API key is set. It makes no API calls and saves nothing on the server. It ships with three fictional prompts and all four verdicts (see [Demo data](architecture.md#demo-data)).
+Open http://127.0.0.1:8080. Demo mode is the default even if an API key is set. It makes no API calls and saves nothing on the server. It ships with three fictional prompts and their release history (see [Demo data](architecture.md#demo-data)).
 
 Overrides work in demo mode too. They are kept in a signed cookie for the browser session only, and the form says so.
 
