@@ -1,0 +1,22 @@
+[
+  {
+    "id": "shipped-followup-1",
+    "type": "baseline",
+    "to_version": "v1",
+    "timestamp": "2026-09-28T17:00:00Z",
+    "confirmed_by": "Priya Raman",
+    "evaluation_id": "recorded-v1-v1",
+    "evaluation_source": "recorded"
+  },
+  {
+    "id": "shipped-followup-2",
+    "type": "rollout",
+    "from_version": "v1",
+    "to_version": "v2",
+    "timestamp": "2026-10-02T16:00:00Z",
+    "confirmed_by": "Priya Raman",
+    "evaluation_id": "recorded-v1-v2",
+    "evaluation_source": "recorded",
+    "verdict": "Ready to roll out"
+  }
+]

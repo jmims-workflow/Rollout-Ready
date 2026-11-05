@@ -5,6 +5,8 @@ suites/<suite-id>/
   versions/v1.md ...          front matter (note, created) then the prompt text
   recorded/<version>.json     demo outputs and judge scores
   runs/<version>.json         live results
+  history.json                release history that ships with the app (demo sets)
+  runs/releases.json          release events added since, append-only
   runs/override-events.json   live overrides: append-only, keyed by evidence fingerprint and example
   runs/<key>.json             records written through the storage interface (records.py)
 """
@@ -28,6 +30,7 @@ from .records import LocalRecordStore, set_lock
 
 VERSION_RE = re.compile(r"^v(\d+)\.md$")
 OVERRIDE_EVENTS = "override-events"  # runs/override-events.json
+RELEASE_EVENTS = "releases"  # runs/releases.json, after the shipped history.json
 
 
 class SuiteError(Exception):
@@ -294,6 +297,14 @@ class Store:
     def save_runs(self, suite_id: str, results: VersionResults) -> None:
         path = self._results_path(suite_id, "runs", results.version)
         _atomic_write(path, results.model_dump_json(indent=2, exclude={"source"}) + "\n")
+
+    # releases: events added since the shipped history (releases.py) --------------
+    def release_events(self, suite_id: str) -> list[dict]:
+        return self.records(suite_id).read(RELEASE_EVENTS) or []
+
+    def append_release_event(self, suite_id: str, event: dict) -> None:
+        with self.lock(suite_id):
+            self.records(suite_id).update(RELEASE_EVENTS, lambda cur: [*(cur or []), event])
 
     # overrides: append-only events, keyed by evidence fingerprint and example ----
     def override_events(self, suite_id: str) -> list[OverrideEvent]:

@@ -32,7 +32,7 @@ from .evidence import (GENERATION_SETTINGS, GENERATION_WRAPPER_REVISION, REVIEWE
 from .judge import judge_output
 from .models import Case, Override, Run, Suite, Version, VersionResults
 from .provider import CUT_OFF, CUT_OFF_MESSAGE, Provider, ProviderError, call_with_retries
-from .storage import Store, input_hash, rubric_hash
+from .storage import Store, SuiteError, input_hash, rubric_hash
 
 Progress = Callable[[int, int, str], None]
 
@@ -179,12 +179,21 @@ def cases_needing_calls(store: Store, suite: Suite, cases: list[Case], version_i
 
 
 # building a record --------------------------------------------------------------------
+def _in_use(store: Store, suite_id: str) -> str:
+    from .releases import in_use_for  # releases builds on this module
+    try:
+        return in_use_for(store, suite_id)
+    except SuiteError:
+        return ""
+
+
 def _new_record(suite: Suite, cases: list[Case], baseline: Version, candidate: Version, reviewer_model: str,
-                source: str, fp: str, record_id: str, started: str, items=(), status="running") -> EvaluationRecord:
+                source: str, fp: str, record_id: str, started: str, items=(), status="running",
+                in_use_id: str = "") -> EvaluationRecord:
     return EvaluationRecord(
         id=record_id, suite_id=suite.id, kind="baseline" if baseline.id == candidate.id else "comparison",
         source=source, candidate=_version_snapshot(candidate), baseline=_version_snapshot(baseline),
-        baseline_in_use=baseline.id == suite.in_use, instruction_type=getattr(suite, "type", "prompt"),
+        baseline_in_use=baseline.id == in_use_id, instruction_type=suite.type,
         examples=[_example_snapshot(c) for c in cases], qualities=list(suite.rubric), checks=list(suite.checks),
         model=suite.model, generation_settings=dict(GENERATION_SETTINGS), repetitions=suite.repeats,
         threshold=suite.threshold, reviewer_model=reviewer_model, reviewer_revision=REVIEWER_PROMPT_REVISION,
@@ -201,7 +210,8 @@ def active_override_events(events: list[OverrideEvent], fp: str) -> dict[str, Ov
     """
     active: dict[str, OverrideEvent] = {}
     for e in events:
-        if e.fingerprint != fp:
+        # Demo mode keeps a 16-character fingerprint in the cookie (demo_session.py).
+        if e.fingerprint != fp and not (len(e.fingerprint) == 16 and fp.startswith(e.fingerprint)):
             continue
         if e.action == "remove":
             active.pop(e.case_id, None)
@@ -286,7 +296,8 @@ def run_evaluation(store: Store, suite_id: str, baseline_id: str, candidate_id: 
 
     planned = plan(store, suite, cases, versions, reviewer_model)
     total = sum(p.calls for p in planned)
-    record = _new_record(suite, cases, baseline, candidate, reviewer_model, "live", fp, new_id(), now())
+    record = _new_record(suite, cases, baseline, candidate, reviewer_model, "live", fp, new_id(), now(),
+                         in_use_id=_in_use(store, suite_id))
     store.save_evaluation(record)
     with _active_lock:
         _active.add(record.id)
@@ -451,7 +462,8 @@ def live_evidence(store: Store, suite_id: str, baseline_id: str, candidate_id: s
     for rec in records_for_pair(store, suite_id, baseline_id, candidate_id):
         if rec.fingerprint == fp and rec.final:
             return hydrate(store, rec)
-    ev = Evidence(_new_record(suite, cases, baseline, candidate, reviewer_model, "live", fp, "", now()), saved=False)
+    ev = Evidence(_new_record(suite, cases, baseline, candidate, reviewer_model, "live", fp, "", now(),
+                              in_use_id=_in_use(store, suite_id)), saved=False)
     items = []
     for p in plan(store, suite, cases, versions, reviewer_model):
         if p.answer and p.review:
@@ -474,6 +486,17 @@ def _entry_matches(entry, suite: Suite, case: Case) -> bool:
     return len(entry.runs) >= suite.repeats
 
 
+def recorded_id(baseline_id: str, candidate_id: str) -> str:
+    return f"recorded-{baseline_id}-{candidate_id}"
+
+
+def parse_recorded_id(evaluation_id: str) -> tuple[str, str] | None:
+    """(baseline, candidate) for a recorded demo record's id, else None."""
+    import re
+    m = re.fullmatch(r"recorded-(v\d+)-(v\d+)", evaluation_id or "")
+    return (m.group(1), m.group(2)) if m else None
+
+
 def recorded_evidence(store: Store, suite_id: str, baseline_id: str, candidate_id: str) -> Evidence:
     """The same record every time, from recorded results. Never written anywhere."""
     suite, cases, baseline, candidate, versions = _load(store, suite_id, baseline_id, candidate_id)
@@ -482,8 +505,10 @@ def recorded_evidence(store: Store, suite_id: str, baseline_id: str, candidate_i
     reviewer = next((r.judge_model for r in recorded.values() if r.judge_model), DEFAULT_JUDGE_MODEL)
     fp = _fingerprint("recorded", suite, cases, baseline, candidate, reviewer)
     ran = max((r.ran_at for r in recorded.values()), default="") or now()
+    # A stable id, so the history that ships with the app can point at it.
     ev = Evidence(_new_record(suite, cases, baseline, candidate, reviewer, "recorded", fp,
-                              "recorded-" + fp[:16], ran), saved=False)
+                              recorded_id(baseline.id, candidate.id), ran,
+                              in_use_id=_in_use(store, suite_id)), saved=False)
     items = []
     for v in versions:
         res = recorded[v.id]

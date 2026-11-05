@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -49,21 +50,67 @@ def _show(phrase: str) -> str:
     return "em dashes" if phrase == "\u2014" else phrase
 
 
+InstructionType = Literal["prompt", "project", "gpt", "skill", "agent"]
+
+# What each type is called, and what a test covers and doesn't (spec section 3).
+TYPE_LABELS: dict[str, str] = {
+    "prompt": "Prompt or snippet",
+    "project": "Claude Project",
+    "gpt": "GPT or Gem instructions",
+    "skill": "Skill",
+    "agent": "Agent instructions",
+}
+SCOPE_NOTES: dict[str, tuple[str, str]] = {
+    "prompt": ("The prompt as your team uses it, on each saved example.",
+               "Inputs you haven't saved as examples. Real use may differ."),
+    "project": ("The Project's instructions, plus any key facts pasted in with them.",
+                "The Project's uploaded files. Paste the facts it relies on into the instructions instead."),
+    "gpt": ("The instructions, run on Claude.",
+            "How it behaves on the other company's model, which can differ."),
+    "skill": ("The skill's written instructions, on each saved example.",
+              "When the skill gets picked up, and any files or scripts bundled with it."),
+    "agent": ("The agent's instructions and the replies it writes.",
+              "Its tools and actions, like sending email or updating records."),
+}
+
+
 class Suite(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str = ""
     name: str = Field(min_length=1)
     description: str = ""
+    type: InstructionType = "prompt"
     team: str = ""  # Sales, Marketing, Partnerships ...
     who_uses_it: str = ""
+    owner_name: str = ""  # self-reported, not verified
+    owner_team: str = ""
+    where_text: str = ""  # where the team uses it, in words
+    where_url: str = ""  # optional link to it
     input_label: str = "What someone on the team would paste in"
-    in_use: str = ""  # the version the team uses now; defaults to the newest
+    in_use: str = ""  # only for sets with no release history (before V3); otherwise derived from history
     model: str = "claude-sonnet-5-5"
     repeats: int = Field(default=1, ge=1, le=5)
     threshold: float = Field(default=0.5, gt=0, le=4)
     rubric: list[Criterion] = Field(min_length=1)
     checks: list[Check] = []
+
+    @field_validator("where_url")
+    @classmethod
+    def _web_address(cls, url: str) -> str:
+        url = url.strip()
+        if url and not re.fullmatch(r"https?://[^\s/$.?#][^\s]*", url):
+            raise ValueError("where_url should be a full web address starting with https://, or left empty")
+        return url
+
+    @property
+    def type_label(self) -> str:
+        return TYPE_LABELS[self.type]
+
+    @property
+    def scope_line(self) -> str:
+        """Shown under every result: what was tested and what wasn't."""
+        return SCOPE_NOTES[self.type][1]
 
     @field_validator("rubric")
     @classmethod

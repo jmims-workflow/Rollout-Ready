@@ -131,4 +131,5 @@ def test_demo_override_events_live_in_the_cookie_and_removal_appends(demo_settin
     import json
     raw = client.cookies.get("rollout_ready").split(".")[0]
     session = json.loads(base64.b64decode(raw + "=" * (-len(raw) % 4)))
-    assert [e.get("action", "set") for e in session["override_events"][SUITE]] == ["set", "remove", "set"]
+    from rollout_ready import demo_session
+    assert [e.action for e in demo_session.overrides(session, SUITE)] == ["set", "remove", "set"]

@@ -23,7 +23,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from starlette.middleware.sessions import SessionMiddleware
 
-from .. import config, evaluate, public, scoring
+from .. import config, demo_session, evaluate, public, releases, scoring
 from ..compare import (MIX_NUDGE, Comparison, build_comparison, example_mix, load_results,
                        needs_harder_examples, summary_text)
 from ..config import Settings, length_problem, load_settings
@@ -165,51 +165,61 @@ def create_app(
     def start_job(request: Request, title: str, done_url: str, work) -> Job:
         return jobs.start(title, done_url, work, owner=session_id(request))
 
-    def in_use(suite: Suite, versions) -> str:
-        ids = [v.id for v in versions]
-        return suite.in_use if suite.in_use in ids else (ids[-1] if ids else "")
+    # release history: shipped events, then live files or the demo cookie ---------
+    def release_log(request: Request, suite_id: str) -> releases.ReleaseLog:
+        if settings.is_live:
+            return releases.StoreLog(store_for(request), suite_id)
+        return releases.ListLog(demo_session.releases(request.session, suite_id))
+
+    def release_history(request: Request, suite_id: str) -> list[releases.ReleaseEvent]:
+        return releases.history(store_for(request), suite_id, release_log(request, suite_id))
+
+    def in_use(request: Request, suite: Suite, versions) -> str:
+        """The version in the latest release event (derived, never stored)."""
+        return releases.in_use(release_history(request, suite.id), [v.id for v in versions], suite.in_use)
 
     def ordered(suites: list[Suite]) -> list[Suite]:
         """The featured prompt first, then by team and name."""
         return sorted(suites, key=lambda s: (s.id != config.FEATURED_SUITE, s.team.lower() or "~", s.name.lower()))
 
-    def default_pair(suite: Suite, versions: list[Version]) -> tuple[str, str] | None:
+    def default_pair(request: Request, suite: Suite, versions: list[Version]) -> tuple[str, str] | None:
         vids = [v.id for v in versions]
         if not vids:
             return None
         if suite.id == config.FEATURED_SUITE and {config.FEATURED_CURRENT, config.FEATURED_NEW} <= set(vids):
             return config.FEATURED_CURRENT, config.FEATURED_NEW
-        current = in_use(suite, versions)
+        current = in_use(request, suite, versions)
         if current == vids[-1] and len(vids) > 1:
             current = vids[-2]
         later = [v for v in vids if int(v[1:]) > int(current[1:])]
         return current, (later[-1] if later else vids[-1])
 
-    def latest_pair(st: Store, suites: list[Suite]) -> tuple[str, str, str] | None:
+    def latest_pair(request: Request, st: Store, suites: list[Suite]) -> tuple[str, str, str] | None:
         """The result the start screen and See results open on.
 
         Demo mode, and public live mode, show the featured comparison. Local live
-        mode picks the prompt whose newest version ran most recently.
+        mode shows the most recent saved test, whichever pair it compared.
         """
         ids = [s.id for s in suites]
         if (not settings.is_live or settings.is_public) and config.FEATURED_SUITE in ids:
             suite = next(s for s in suites if s.id == config.FEATURED_SUITE)
-            pair = default_pair(suite, st.versions(suite.id))
+            pair = default_pair(request, suite, st.versions(suite.id))
             if pair:
                 return (suite.id, *pair)
-        best = None
+        if settings.is_live:
+            newest = None
+            for s in suites:
+                for rid in st.evaluation_ids(s.id):
+                    rec = st.load_evaluation(s.id, rid)
+                    if rec and rec.kind == "comparison" and (newest is None or rid > newest[0]):
+                        newest = (rid, s.id, rec.baseline.id, rec.candidate.id)
+            if newest:
+                return newest[1:]
         for s in suites:
-            pair = default_pair(s, st.versions(s.id))
-            if not pair or pair[0] == pair[1]:
-                continue
-            if settings.is_live:
-                rec = evaluate.latest_record(st, s.id, *pair)
-                ran = (rec.finished or rec.started) if rec else ""
-            else:
-                ran = load_results(st, s.id, pair[1], False).ran_at
-            if best is None or ran > best[0]:
-                best = (ran, s.id, *pair)
-        return best[1:] if best else None
+            pair = default_pair(request, s, st.versions(s.id))
+            if pair and pair[0] != pair[1]:
+                return (s.id, *pair)
+        return None
 
     # overrides: append-only events keyed by the evidence's fingerprint and example.
     # Live: files (private to the session in public mode). Demo: the signed session cookie,
@@ -217,21 +227,13 @@ def create_app(
     def override_events(request: Request, suite_id: str) -> list[OverrideEvent]:
         if settings.is_live:
             return store_for(request).override_events(suite_id)
-        out = []
-        for data in request.session.get("override_events", {}).get(suite_id, []):
-            try:
-                out.append(OverrideEvent.model_validate(data))
-            except ValidationError:
-                continue
-        return out
+        return demo_session.overrides(request.session, suite_id)
 
     def add_override_event(request: Request, suite_id: str, event: OverrideEvent) -> None:
         if settings.is_live:
             store_for(request).append_override_event(suite_id, event)
             return
-        all_events = dict(request.session.get("override_events", {}))
-        all_events[suite_id] = [*all_events.get(suite_id, []), event.model_dump(mode="json", exclude_defaults=True)]
-        request.session["override_events"] = all_events
+        demo_session.add_override(request.session, suite_id, event)  # CookieFull if there's no room
 
     def with_overrides(request: Request, comp: Comparison) -> Comparison:
         if comp.record is None or comp.current.id == comp.new.id:
@@ -271,7 +273,7 @@ def create_app(
         except SuiteError as exc:
             return problem(request, str(exc), status=500)
         latest, banner = None, ""
-        pick = latest_pair(st, suites)
+        pick = latest_pair(request, st, suites)
         if pick:
             try:
                 comp = comparison(request, *pick)
@@ -306,7 +308,7 @@ def create_app(
                            back_url="/prompts/new", back_text="Add a new prompt")
         ids = [s.id for s in suites]
         if suite not in ids:
-            pick = latest_pair(st, suites)
+            pick = latest_pair(request, st, suites)
             suite = pick[0] if pick else ids[0]
             if pick and not current and not new:
                 current, new = pick[1], pick[2]
@@ -315,7 +317,7 @@ def create_app(
         vids = [v.id for v in versions]
         if not vids:
             return problem(request, "This prompt has no versions yet.", status=404)
-        pair = default_pair(the_suite, versions)
+        pair = default_pair(request, the_suite, versions)
         if current not in vids:
             current = pair[0]
         if new not in vids:
@@ -445,7 +447,7 @@ def create_app(
         suite_id = suite_id if suite_id in ids else (config.FEATURED_SUITE if config.FEATURED_SUITE in ids else ids[0])
         suite = next(s for s in suites if s.id == suite_id)
         versions = st.versions(suite_id)
-        use = in_use(suite, versions)
+        use = in_use(request, suite, versions)
         against_v = next((v for v in versions if v.id == against), None) or next(v for v in versions if v.id == use)
         cases = st.load_cases(suite_id)
         ctx = dict(nav="test", suites=suites if settings.is_live else [suite], suite=suite,
@@ -704,6 +706,8 @@ def create_app(
             taken.add(cid)
             new_cases.append(Case(id=cid, name=name, label=label, kind=kind, input=text))
         suite_id = st.create_suite(suite, new_cases, f["prompt_text"].strip(), note="The prompt the team uses today.")
+        # Version 1 is recorded as in use by the owner. In public mode the name is "you".
+        releases.StoreLog(st, suite_id).append(releases.baseline_event("v1", "you" if settings.is_public else ""))
         job = start_job(request, "Scoring version 1 to set the starting point", f"/prompts/{suite_id}?created=1",
                         run_versions(st, suite_id, ["v1"], make_provider(), settings.judge_model))
         return RedirectResponse(f"/jobs/{job.id}", status_code=303)
@@ -719,7 +723,7 @@ def create_app(
         message = ("Saved. Version 1 is scored, so every version you try is compared with it." if created
                    else "Saved." if saved else None)
         return page(request, "suite.html", nav="prompts", suite=suite, versions=versions, cases=cases,
-                    in_use=in_use(suite, versions), message=message, error=None,
+                    in_use=in_use(request, suite, versions), message=message, error=None,
                     nudge=needs_harder_examples(cases), mix=example_mix(cases),
                     next_url=f"/prompts/{suite_id}?saved=1#add-example")
 
@@ -766,7 +770,7 @@ def create_app(
             against = str(form.get("against", ""))
             if against not in {v.id for v in st.versions(suite_id)}:
                 # Count the version in use too, so the estimate never comes in low.
-                against = in_use(suite, st.versions(suite_id))
+                against = in_use(request, suite, st.versions(suite_id))
             estimate = test_estimate(st, suite, cases, against)[1]
             return {"ok": True, "case": case.model_dump(), "kind_label": case.kind_label, "count": len(cases),
                     "estimate": estimate,
@@ -805,6 +809,18 @@ def create_app(
         rest = re.sub(r"^([^/]+)/cases/", r"\1/examples/", rest)
         query = f"?{request.query_params}" if request.query_params else ""
         return RedirectResponse(f"/prompts/{rest}{query}", status_code=301)
+
+    # demo mode: the cookie that holds a visitor's changes is full ----------------------
+    @app.exception_handler(demo_session.CookieFull)
+    async def cookie_full(request: Request, exc: demo_session.CookieFull):
+        return problem(request, str(exc), status=409, heading="No room for more changes", info=True,
+                       start_over=True)
+
+    @app.post("/demo/start-over")
+    async def start_over(request: Request):
+        """Clear this visit's demo changes: overrides and releases. Nothing on disk is touched."""
+        demo_session.start_over(request.session)
+        return RedirectResponse("/", status_code=303)
 
     @app.get("/healthz")
     def health() -> Response:

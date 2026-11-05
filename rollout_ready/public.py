@@ -103,6 +103,8 @@ class SessionStore(Store):
             shutil.copy2(src / "cases.yaml", tmp / "cases.yaml")
             shutil.copytree(src / "versions", tmp / "versions")
             shutil.copy2(src / "suite.yaml", tmp / "suite.yaml")
+            if (src / "history.json").exists():
+                shutil.copy2(src / "history.json", tmp / "history.json")
             tmp.rename(dest)
 
     # reading: the visitor's own copy first, then the demo prompts ----------
@@ -136,6 +138,13 @@ class SessionStore(Store):
 
     def override_events(self, suite_id: str) -> list[OverrideEvent]:
         return super().override_events(suite_id) if self._own(suite_id) else []
+
+    def append_release_event(self, suite_id: str, event: dict) -> None:
+        self._copy_if_demo(suite_id)
+        super().append_release_event(suite_id, event)
+
+    def release_events(self, suite_id: str) -> list[dict]:
+        return super().release_events(suite_id) if self._own(suite_id) else []
 
     # results: answers and reviews may be shared; evaluation records never are ----
     def _demo_version(self, suite_id: str, version_id: str) -> bool:

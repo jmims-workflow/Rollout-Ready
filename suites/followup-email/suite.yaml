@@ -1,9 +1,12 @@
 name: Discovery follow-up email
 description: Turns a rep's discovery call notes into a follow-up email they can send the same day.
+type: project
 team: Sales
 who_uses_it: Account executives, right after a discovery call.
+owner_name: Priya Raman
+owner_team: Sales enablement
+where_text: the Sales follow-up assistant project in Claude
 input_label: What a rep would paste in
-in_use: v2
 model: claude-sonnet-5-5
 repeats: 1
 threshold: 0.5
