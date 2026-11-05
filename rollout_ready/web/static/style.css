@@ -462,3 +462,21 @@ progress { width: 100%; height: 1.25rem; accent-color: var(--primary); }
 .whats-this { display: inline-block; margin: 0 0 .5rem; font-size: .92rem; }
 .whats-this > summary { cursor: pointer; color: var(--primary); text-decoration: underline; min-height: 44px; display: inline-flex; align-items: center; }
 .whats-this p { margin: .25rem 0 0; color: var(--ink); max-width: 46rem; }
+
+/* Manage ------------------------------------------------------------------- */
+.hero { padding: 1.5rem 0 .5rem; }
+.hero-kicker { font-family: var(--mono); font-size: .95rem; color: var(--primary); margin: 0 0 .4rem; }
+.hero-title { font-size: clamp(1.7rem, 4vw, 2.4rem); line-height: 1.2; margin: 0 0 .75rem; max-width: 40rem; }
+.new-here a { display: inline-flex; align-items: center; min-height: 44px; font-weight: 600; }
+.familiar { list-style: none; padding: 0; margin: 0 0 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; }
+.familiar .card { margin: 0; }
+.familiar h3 { font-size: 1.05rem; margin: 0 0 .4rem; }
+.familiar p { margin: 0; }
+.set-list { display: grid; gap: 1rem; margin-bottom: 1rem; }
+.set-card { margin: 0; }
+.set-card h3 { margin: .25rem 0 .4rem; font-size: 1.2rem; }
+.set-tags { margin: 0; display: flex; flex-wrap: wrap; gap: .35rem; }
+.set-meta { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; color: var(--muted); font-size: .95rem; margin: .4rem 0; }
+.set-status { margin: .5rem 0 0; padding-top: .5rem; border-top: 1px solid var(--line); color: var(--ink); }
+.more-sets > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; color: var(--primary); }
+.page-head { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between; margin-bottom: 1rem; }

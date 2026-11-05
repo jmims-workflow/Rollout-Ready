@@ -49,27 +49,69 @@ def override(client, url, call="not_worse", reason="The answer is there, just fu
 
 # start screen ------------------------------------------------------------------
 def test_start_screen(demo):
+    """Manage (spec 7a). The latest-result banner is gone (decision 1)."""
     r = demo.get("/")
     assert r.status_code == 200
     text = page_text(r.text)
-    assert "What would you like to do?" in text
-    assert ("Rollout Ready runs a prompt change on real examples, so you find out what it broke "
-            "before your team does.") in text
-    assert ("Latest result: version 3 of the sales follow-up assistant is not ready to roll out. "
-            "It broke 2 examples.") in text
-    assert "See why" in text and 'href="/results?suite=followup-email&amp;current=v2&amp;new=v3"' in r.text
+    assert "The output reveals the gap. Know what a change does before your team sees it." in text
+    assert ("You wrote the rule. The AI broke it anyway. Rollout Ready runs a proposed change to your team's "
+            "prompts, Projects, GPTs and skills on saved examples, scores each answer against what good looks like, "
+            "and shows what improved, what got worse, and what needs your judgment before you update your team's "
+            "tool.") in text
+    assert "New here? See an example of a change it caught" in text
+    assert 'href="/results?suite=followup-email&amp;current=v2&amp;new=v3"' in r.text  # the featured Not ready result
+    assert "Latest result" not in text and "See why" not in text and "verdict-icon" not in r.text
+    assert "Sound familiar?" in text
+    for heading, body in [
+        ("It still does the thing you told it not to.",
+         "Every answer is scored against your rules, so you see which ones get ignored, and on which inputs."),
+        ("You fixed one thing and broke another.",
+         "Every change runs on all your saved examples, so you see what a fix broke on them before your team does."),
+        ("No one can say whether the change helped.",
+         "You get a verdict based on the evidence, and a record of what changed, why, and who decided."),
+    ]:
+        assert f"{heading} {body}" in text
+    assert "Instructions you manage Add AI instructions" in text and 'href="/prompts/new"' in r.text
+    assert ("Claude Project Sales Sales follow-up assistant Turns a rep's discovery call notes into a follow-up email "
+            "they can send the same day. In use: version 2, since October 2, 2026 Owner: Priya Raman, Sales "
+            "enablement Version 4 tested against version 2: Ready to roll out.") in text
+    assert "Version 3 tested against version 2: Needs review." in text
+    assert "Version 3 tested against version 2: Not ready to roll out." in text
     assert "Test, review and roll out changes to your team's AI instructions." in text
     assert "Demo: sample results" in text
-    for title, href, meta in [("Test a change", "/test", "Start here"), ("See results", "/results", "10 saved results"),
-                              ("Your prompts", "/prompts", "3 prompts: sales, business development, marketing"),
-                              ("How it works", "/how-it-works", "2 minute read")]:
-        assert title in text and f'href="{href}"' in r.text and meta in text
-    assert "This demo uses sample results for a fictional company, Northstar Systems. Nothing you type here is saved." in text
     assert 'class="main-nav"' in r.text  # the header nav is on every page (spec section 2)
 
 
+def test_set_card_status_lines_are_neutral(demo):
+    """Warning styling is for the result page only (decision 1)."""
+    page = demo.get("/").text
+    cards = page.split('class="plain-list set-list"', 1)[1]
+    assert "verdict-" not in cards and "callout" not in cards and "alert" not in cards and "<svg" not in cards
+    css = (SUITES.parent / "rollout_ready/web/static/style.css").read_text()
+    rule = re.search(r"\.set-status \{([^}]*)\}", css).group(1)
+    assert "alert" not in rule and "worse" not in rule
+
+
+def test_new_here_link_hides_after_a_first_test(demo):
+    assert "New here?" in demo.get("/").text
+    demo.post("/test", data={})  # demo mode: try the saved example change
+    assert "New here?" not in demo.get("/").text
+
+
+def test_show_more_holds_sets_with_nothing_waiting(demo_settings, suites_copy):
+    from rollout_ready.config import Settings
+    settings = Settings(mode="demo", requested_mode="demo", judge_model="claude-sonnet-5-5", suites_dir=suites_copy)
+    for sid in ("partner-outreach", "webinar-invite"):  # no drafts left: nothing waiting
+        (suites_copy / sid / "versions" / "v3.md").unlink()
+    text = page_text(TestClient(create_app(settings)).get("/").text)
+    assert "Show 2 more with no changes waiting" in text
+    waiting, more = text.split("Show 2 more with no changes waiting")
+    assert "Sales follow-up assistant" in waiting and "Partner outreach" in more and "Webinar invite writer" in more
+    assert more.count("No changes waiting.") == 2
+
+
 def test_start_screen_footer_line_is_demo_only(live):
-    assert "Nothing you type here is saved" not in live.get("/").text
+    assert "Your changes last until you close this browser" not in live.get("/").text
     assert "Live: runs on Claude" in live.get("/").text
 
 
@@ -82,7 +124,8 @@ def test_inner_pages_have_home_link_and_new_nav(demo):
 
 # redirects ---------------------------------------------------------------------
 @pytest.mark.parametrize("old,new", [
-    ("/suites", "/prompts"),
+    ("/suites", "/"),
+    ("/prompts", "/"),
     ("/scoring", "/how-it-works"),
     ("/suites/followup-email", "/prompts/followup-email"),
     ("/suites/new", "/prompts/new"),
@@ -299,7 +342,7 @@ def test_add_example_asks_for_its_kind(live):
 
 # other pages ----------------------------------------------------------------------
 def test_other_pages(demo):
-    for url, text in [("/prompts", "Add a new prompt"), ("/prompts/followup-email", "Versions"),
+    for url, text in [("/prompts", "Add AI instructions"), ("/prompts/followup-email", "Versions"),
                       ("/prompts/new", "Suggest qualities for me"), ("/how-it-works", "Why one broken example matters")]:
         r = demo.get(url)
         assert r.status_code == 200 and text in r.text
@@ -453,7 +496,8 @@ def test_live_start_screen_shows_the_most_recent_result(live):
     live.post("/test", data={"suite": "partner-outreach", "against": "v1", "prompt_text": "Better", "note": "Try"})
     wait_for_jobs(live)
     text = page_text(live.get("/").text)
-    assert "Latest result: version 4 of the partner outreach" in text
+    # The banner is gone (decision 1): the set's card says what's waiting, in neutral words.
+    assert "Version 4 tested against version 1:" in text and "Latest result" not in text
 
 
 def test_live_add_example_without_reload(live):

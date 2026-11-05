@@ -67,7 +67,7 @@ def test_sample_results_stay_visible(app):
     v = visitor(app)
     home = v.get("/").text
     assert "Live: runs on Claude" in home
-    assert "Latest result: version 3 of the sales follow-up assistant is not ready to roll out." in home
+    assert "Version 4 tested against version 2: Ready to roll out." in home  # the set card, from sample results
     r = v.get(FEATURED + "&tab=details")
     assert r.status_code == 200 and "Not ready to roll out" in r.text
     assert r.text.count("Sample results") >= 2 and "Real results" not in r.text
@@ -126,8 +126,9 @@ def test_one_session_never_sees_another(app, suites_copy, data_dir):
                                  "crit_five_1": "Very clear", "crit_one_1": "Unclear"})
     wait(app)
     assert "Alice prompt" not in b.get("/prompts/followup-email").text
-    assert b.get("/prompts").text.count("Sales follow-up assistant") == 1
-    assert a.get("/prompts").text.count("Sales follow-up assistant") == 2
+    card = '">Sales follow-up assistant</a></h3>'  # one card each
+    assert b.get("/prompts").text.count(card) == 1
+    assert a.get("/prompts").text.count(card) == 2
 
     # Nothing a visitor wrote lands in the shared prompts folder or the shared cache.
     assert snapshot(suites_copy) == before
