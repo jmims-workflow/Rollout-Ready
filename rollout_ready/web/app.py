@@ -11,7 +11,7 @@ import os
 import re
 import secrets
 import time
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Callable
 from urllib.parse import urlencode
@@ -29,7 +29,8 @@ from ..compare import (MIX_NUDGE, Comparison, build_comparison, example_mix, loa
 from ..config import Settings, length_problem, load_settings
 from ..demo_criteria import SAMPLE_CRITERIA, SAMPLE_SUITE_NAME, SAMPLE_WHO
 from ..judge import draft_criteria
-from ..models import CASE_KINDS, Case, Check, Criterion, Override, Suite, Version
+from ..evidence import OverrideEvent
+from ..models import CASE_KINDS, Case, Check, Criterion, Suite, Version
 from ..provider import ClaudeProvider, Provider, ProviderError
 from ..runner import Job, JobManager, change_test_estimate, estimate_sentence, pending_for, run_versions
 from ..public import SessionStore, Sessions, SharedResults, Usage
@@ -210,54 +211,44 @@ def create_app(
                 best = (ran, s.id, *pair)
         return best[1:] if best else None
 
-    # overrides: files in live mode, a signed session cookie in demo mode -----
-    def _cookie_key(suite_id: str, current: str, new: str) -> str:
-        return f"{suite_id}|{current}|{new}"
-
-    def get_overrides(request: Request, suite_id: str, current: str, new: str) -> dict[str, Override]:
+    # overrides: append-only events keyed by the evidence's fingerprint and example.
+    # Live: files (private to the session in public mode). Demo: the signed session cookie,
+    # so nothing is written to disk. -----------------------------------------------------
+    def override_events(request: Request, suite_id: str) -> list[OverrideEvent]:
         if settings.is_live:
-            return store_for(request).load_overrides(suite_id, current, new)
-        raw = request.session.get("overrides", {}).get(_cookie_key(suite_id, current, new), {})
-        out = {}
-        for cid, data in raw.items():
+            return store_for(request).override_events(suite_id)
+        out = []
+        for data in request.session.get("override_events", {}).get(suite_id, []):
             try:
-                out[cid] = Override.model_validate(data)
+                out.append(OverrideEvent.model_validate(data))
             except ValidationError:
                 continue
         return out
 
-    def put_override(request: Request, suite_id: str, current: str, new: str, case_id: str, o: Override | None):
+    def add_override_event(request: Request, suite_id: str, event: OverrideEvent) -> None:
         if settings.is_live:
-            st = store_for(request)
-            if o:
-                st.save_override(suite_id, current, new, case_id, o)
-            else:
-                st.remove_override(suite_id, current, new, case_id)
+            store_for(request).append_override_event(suite_id, event)
             return
-        all_o = dict(request.session.get("overrides", {}))
-        pair = dict(all_o.get(_cookie_key(suite_id, current, new), {}))
-        if o:
-            pair[case_id] = o.model_dump()
-        else:
-            pair.pop(case_id, None)
-        if pair:
-            all_o[_cookie_key(suite_id, current, new)] = pair
-        else:
-            all_o.pop(_cookie_key(suite_id, current, new), None)
-        request.session["overrides"] = all_o
+        all_events = dict(request.session.get("override_events", {}))
+        all_events[suite_id] = [*all_events.get(suite_id, []), event.model_dump(mode="json", exclude_defaults=True)]
+        request.session["override_events"] = all_events
+
+    def with_overrides(request: Request, comp: Comparison) -> Comparison:
+        if comp.record is None or comp.current.id == comp.new.id:
+            return comp
+        active = evaluate.active_override_events(override_events(request, comp.suite.id), comp.record.fingerprint)
+        return comp.apply_overrides(evaluate.as_overrides(active))
 
     def comparison(request: Request, suite_id: str, current: str, new: str) -> Comparison:
         st = store_for(request)
-        overrides = get_overrides(request, suite_id, current, new) if current != new else {}
-        comp = build_comparison(st, suite_id, current, new, settings.is_live, overrides,
-                                reviewer_model=settings.judge_model)
+        comp = build_comparison(st, suite_id, current, new, settings.is_live, reviewer_model=settings.judge_model)
         if settings.is_public and not comp.complete:
             # Public visitors still see the demo's sample comparisons. A comparison is all
             # real results or all sample results, never a mix.
-            sample = build_comparison(st, suite_id, current, new, False, overrides)
+            sample = build_comparison(st, suite_id, current, new, False)
             if sample.complete:
-                return sample
-        return comp
+                return with_overrides(request, sample)
+        return with_overrides(request, comp)
 
     def results_url(suite_id: str, current: str, new: str, **extra) -> str:
         return "/results?" + urlencode({"suite": suite_id, "current": current, "new": new, **extra})
@@ -378,7 +369,8 @@ def create_app(
 
     @app.get("/prompts/{suite_id}/examples/{case_id}", response_class=HTMLResponse)
     def case_detail(request: Request, suite_id: str, case_id: str, current: str = "", new: str = "", saved: str = ""):
-        message = {"1": "Saved. This example now counts the way you said, for these two versions only.",
+        message = {"1": "Saved. This example now counts the way you said, for these results only. "
+                        "If the examples or what good looks like change, you'll decide again.",
                    "removed": "Removed. This example counts the way the AI reviewer scored it again."}.get(saved)
         return example_page(request, suite_id, case_id, current, new, message=message)
 
@@ -414,8 +406,8 @@ def create_app(
         if error:
             return example_page(request, suite_id, case_id, current, new, status=400, form_error=error,
                                 form={"call": call, "reason": reason, "count_as": count_as})
-        put_override(request, suite_id, current, new, case_id,
-                     Override(call=call, result=result, reason=reason, created=date.today().isoformat()))
+        add_override_event(request, suite_id, evaluate.override_event(
+            comp.record.fingerprint, comp.record.id, case_id, call=call, result=result, reason=reason))
         return RedirectResponse(example_url(suite_id, case_id, current, new, saved="1") + "#your-call",
                                 status_code=303)
 
@@ -423,12 +415,14 @@ def create_app(
     async def remove_override(request: Request, suite_id: str, case_id: str):
         form = await request.form()
         current, new = str(form.get("current", "")), str(form.get("new", ""))
-        st = store_for(request)
         try:
-            st.load_version(suite_id, current), st.load_version(suite_id, new)
+            comp = comparison(request, suite_id, current, new)
         except SuiteError as exc:
             return problem(request, str(exc), status=404, heading="Not found")
-        put_override(request, suite_id, current, new, case_id, None)
+        row = comp.row(case_id)
+        if row is not None and row.override is not None:  # removing appends an event; nothing is deleted
+            add_override_event(request, suite_id, evaluate.override_event(
+                comp.record.fingerprint, comp.record.id, case_id, remove=True))
         return RedirectResponse(example_url(suite_id, case_id, current, new, saved="removed") + "#your-call",
                                 status_code=303)
 

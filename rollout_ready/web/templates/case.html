@@ -25,7 +25,7 @@
     <button class="btn btn-secondary" type="submit">Remove my override</button>
   </form>
   {% else %}
-  <p class="muted">The AI reviewer says this example {{ {'worse': 'got worse', 'better': 'got better', 'same': 'stayed about the same'}[row.ai_result] }}. If you read both outputs and see it differently, your call counts instead, for these two versions only. The AI reviewer's scores stay as they are.</p>
+  <p class="muted">The AI reviewer says this example {{ {'worse': 'got worse', 'better': 'got better', 'same': 'stayed about the same'}[row.ai_result] }}. If you read both outputs and see it differently, your call counts instead, for these results only. The AI reviewer's scores stay as they are, and a missed deal-breaker still blocks a rollout.</p>
   <details class="disagree"{% if form_error %} open{% endif %}>
     <summary class="btn btn-secondary">I disagree with the AI reviewer</summary>
     <form method="post" action="/prompts/{{ suite.id }}/examples/{{ row.case.id }}/override" class="disagree-form" data-disagree>

@@ -5,7 +5,7 @@ suites/<suite-id>/
   versions/v1.md ...          front matter (note, created) then the prompt text
   recorded/<version>.json     demo outputs and judge scores
   runs/<version>.json         live results
-  runs/overrides.json         live overrides, keyed "<current>:<new>" then case id
+  runs/override-events.json   live overrides: append-only, keyed by evidence fingerprint and example
   runs/<key>.json             records written through the storage interface (records.py)
 """
 
@@ -22,11 +22,12 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
-from .evidence import AnswerBlob, EvaluationRecord, ReviewBlob
-from .models import Case, Override, Suite, Version, VersionResults
+from .evidence import AnswerBlob, EvaluationRecord, OverrideEvent, ReviewBlob
+from .models import Case, Suite, Version, VersionResults
 from .records import LocalRecordStore, set_lock
 
 VERSION_RE = re.compile(r"^v(\d+)\.md$")
+OVERRIDE_EVENTS = "override-events"  # runs/override-events.json
 
 
 class SuiteError(Exception):
@@ -294,39 +295,14 @@ class Store:
         path = self._results_path(suite_id, "runs", results.version)
         _atomic_write(path, results.model_dump_json(indent=2, exclude={"source"}) + "\n")
 
-    # overrides (live mode) --------------------------------------------
-    def _overrides_path(self, suite_id: str) -> Path:
-        return self.suite_dir(suite_id) / "runs" / "overrides.json"
+    # overrides: append-only events, keyed by evidence fingerprint and example ----
+    def override_events(self, suite_id: str) -> list[OverrideEvent]:
+        """Every override and removal ever made for this set, oldest first. Never edited or deleted."""
+        return [OverrideEvent.model_validate(e) for e in self.records(suite_id).read(OVERRIDE_EVENTS) or []]
 
-    def _all_overrides(self, suite_id: str) -> dict:
-        path = self._overrides_path(suite_id)
-        if not path.exists():
-            return {}
-        try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise SuiteError(f"{path} could not be read: {exc}") from exc
-
-    def load_overrides(self, suite_id: str, current: str, new: str) -> dict[str, Override]:
-        pair = self._all_overrides(suite_id).get(pair_key(current, new), {})
-        return {cid: Override.model_validate(o) for cid, o in pair.items()}
-
-    def save_override(self, suite_id: str, current: str, new: str, case_id: str, override: Override) -> None:
-        data = self._all_overrides(suite_id)
-        data.setdefault(pair_key(current, new), {})[case_id] = override.model_dump()
-        _atomic_write(self._overrides_path(suite_id), json.dumps(data, indent=2) + "\n")
-
-    def remove_override(self, suite_id: str, current: str, new: str, case_id: str) -> None:
-        data = self._all_overrides(suite_id)
-        pair = data.get(pair_key(current, new), {})
-        if pair.pop(case_id, None) is not None:
-            if not pair:
-                data.pop(pair_key(current, new))
-            _atomic_write(self._overrides_path(suite_id), json.dumps(data, indent=2) + "\n")
-
-
-def pair_key(current: str, new: str) -> str:
-    return f"{current}:{new}"
+    def append_override_event(self, suite_id: str, event: OverrideEvent) -> None:
+        with self.lock(suite_id):
+            self.records(suite_id).update(OVERRIDE_EVENTS, lambda cur: [*(cur or []), event.model_dump(mode="json")])
 
 
 def rubric_hash(suite: Suite) -> str:

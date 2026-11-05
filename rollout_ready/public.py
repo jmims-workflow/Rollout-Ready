@@ -28,8 +28,8 @@ from urllib.parse import urlparse
 from pydantic import ValidationError
 
 from .config import Limits
-from .evidence import AnswerBlob, EvaluationRecord, ReviewBlob, qualities_payload
-from .models import Case, Override, VersionResults
+from .evidence import AnswerBlob, EvaluationRecord, OverrideEvent, ReviewBlob, qualities_payload
+from .models import Case, VersionResults
 from .records import LocalRecordStore
 from .storage import Store, SuiteError, _atomic_write
 
@@ -130,16 +130,12 @@ class SessionStore(Store):
         self._copy_if_demo(suite_id)
         return super().add_version(suite_id, text, note, created)
 
-    def save_override(self, suite_id: str, current: str, new: str, case_id: str, override: Override) -> None:
-        self._copy(suite_id)
-        super().save_override(suite_id, current, new, case_id, override)
+    def append_override_event(self, suite_id: str, event: OverrideEvent) -> None:
+        self._copy_if_demo(suite_id)
+        super().append_override_event(suite_id, event)
 
-    def remove_override(self, suite_id: str, current: str, new: str, case_id: str) -> None:
-        if self._own(suite_id):
-            super().remove_override(suite_id, current, new, case_id)
-
-    def _all_overrides(self, suite_id: str) -> dict:
-        return super()._all_overrides(suite_id) if self._own(suite_id) else {}
+    def override_events(self, suite_id: str) -> list[OverrideEvent]:
+        return super().override_events(suite_id) if self._own(suite_id) else []
 
     # results: answers and reviews may be shared; evaluation records never are ----
     def _demo_version(self, suite_id: str, version_id: str) -> bool:

@@ -27,10 +27,10 @@ from . import scoring
 from .checks import run_checks
 from .config import DEFAULT_JUDGE_MODEL
 from .evidence import (GENERATION_SETTINGS, GENERATION_WRAPPER_REVISION, REVIEWER_PROMPT_REVISION, AnswerBlob,
-                       CheckOutcome, EvaluationRecord, ExampleSnapshot, ItemResult, MissDetail, ReviewBlob,
-                       VersionSnapshot, answer_key, fingerprint, review_key, text_hash)
+                       CheckOutcome, EvaluationRecord, ExampleSnapshot, ItemResult, MissDetail, OverrideEvent,
+                       ReviewBlob, VersionSnapshot, answer_key, fingerprint, review_key, text_hash)
 from .judge import judge_output
-from .models import Case, Run, Suite, Version, VersionResults
+from .models import Case, Override, Run, Suite, Version, VersionResults
 from .provider import CUT_OFF, CUT_OFF_MESSAGE, Provider, ProviderError, call_with_retries
 from .storage import Store, input_hash, rubric_hash
 
@@ -193,8 +193,41 @@ def _new_record(suite: Suite, cases: list[Case], baseline: Version, candidate: V
     )
 
 
-def finalize(evidence: Evidence, status: str | None = None, finished: str | None = None) -> EvaluationRecord:
-    """The final record: status, AI classifications, counts, averages and verdict (before any override)."""
+# overrides ------------------------------------------------------------------------------
+def active_override_events(events: list[OverrideEvent], fp: str) -> dict[str, OverrideEvent]:
+    """The overrides in force for this evidence, by example: the latest "set" not followed by a "remove".
+
+    Events for any other fingerprint are ignored, so an override never carries over to changed evidence.
+    """
+    active: dict[str, OverrideEvent] = {}
+    for e in events:
+        if e.fingerprint != fp:
+            continue
+        if e.action == "remove":
+            active.pop(e.case_id, None)
+        else:
+            active[e.case_id] = e
+    return active
+
+
+def as_overrides(active: dict[str, OverrideEvent]) -> dict[str, Override]:
+    return {cid: Override(call=e.call, result=e.result, reason=e.reason, created=e.created) for cid, e in active.items()}
+
+
+def override_event(fp: str, evaluation_id: str, case_id: str, *, call=None, result=None, reason: str = "",
+                   remove: bool = False) -> OverrideEvent:
+    return OverrideEvent(id=uuid.uuid4().hex, fingerprint=fp, evaluation_id=evaluation_id, case_id=case_id,
+                         action="remove" if remove else "set", call=None if remove else call,
+                         result=None if remove else result, reason="" if remove else reason, created=now())
+
+
+def finalize(evidence: Evidence, status: str | None = None, finished: str | None = None,
+             overrides: dict[str, OverrideEvent] | None = None) -> EvaluationRecord:
+    """The final record: status, the AI reviewer's classifications, and the outcome after any overrides in force.
+
+    Classifications are always the AI reviewer's. Counts and verdict count each overridden
+    example the way the person said, and a missed deal-breaker always blocks.
+    """
     from .compare import comparison_from_evidence  # compare builds on this module
 
     rec = evidence.record
@@ -202,8 +235,10 @@ def finalize(evidence: Evidence, status: str | None = None, finished: str | None
     status = status or ("complete" if all_done else "incomplete")
     draft = Evidence(rec.model_copy(update={"status": "incomplete", "verdict": None}), evidence.answers,
                      evidence.reviews, evidence.saved)
-    comp = comparison_from_evidence(draft)
+    overrides = overrides or {}
+    comp = comparison_from_evidence(draft, overrides=as_overrides(overrides))
     update = {"status": status, "finished": finished or now(), "verdict": None,
+              "overrides_applied": [overrides[cid] for cid in sorted(overrides) if comp.row(cid)],
               "classifications": {r.case.id: r.ai_result for r in comp.rows} if rec.kind == "comparison" else {},
               "counts": {"worse": comp.count(scoring.WORSE), "better": comp.count(scoring.BETTER),
                          "same": comp.count(scoring.SAME)} if comp.rows else {},
@@ -320,7 +355,7 @@ def run_evaluation(store: Store, suite_id: str, baseline_id: str, candidate_id: 
             ev.reviews[review.key] = review
             items.append(_item(p.version.id, p.case, p.repetition, suite, answer, review))
         ev.record = record.model_copy(update={"items": items})
-        final = finalize(ev)
+        final = finalize(ev, overrides=active_override_events(store.override_events(suite_id), fp))
         store.finish_evaluation(final)
     finally:
         with _active_lock:

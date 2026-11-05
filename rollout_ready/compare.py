@@ -119,8 +119,8 @@ class CaseRow:
 
     @property
     def blocking_misses(self) -> list[Criterion]:
-        """Missed deal-breakers that block a rollout. An override replaces the AI reviewer's call."""
-        return [] if self.override else self.new_missed
+        """Missed deal-breakers that block a rollout. An override never hides one (spec section 5)."""
+        return self.new_missed
 
     @property
     def current_words(self) -> int:
@@ -331,6 +331,14 @@ class Comparison:
 
     def row(self, case_id: str) -> CaseRow | None:
         return next((r for r in self.rows if r.case.id == case_id), None)
+
+    def apply_overrides(self, overrides: dict[str, Override]) -> "Comparison":
+        """Count each overridden example the way the person said. Scores and deal-breaker misses don't change."""
+        for r in self.rows:
+            r.override = overrides.get(r.case.id)
+        order = {scoring.WORSE: 0, scoring.BETTER: 1, scoring.SAME: 2}
+        self.rows.sort(key=lambda r: order[r.result])
+        return self
 
     def diff(self) -> list[tuple[str, str]]:
         return prompt_diff(self.current.text, self.new.text)

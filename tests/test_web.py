@@ -193,11 +193,13 @@ def test_override_changes_the_verdict_but_not_the_stored_scores(demo):
     assert "Overridden by you. The AI reviewer said Got worse." in text
     assert override(demo, CALLOWAY, reason="Marcus got his answer by phone.").status_code == 303
     text = page_text(demo.get(FEATURED).text)
-    assert "Ready to roll out" in text and "Not ready to roll out" not in text
+    # Both examples now count as About the same, but their missed deal-breakers still block (spec section 5).
+    assert "Got worse 0 Got better 4" in text
+    assert "Not ready to roll out" in text.split("Got worse 0")[0]
     assert "2 examples overridden by you:" in text and "Marcus got his answer by phone." in text
-    assert "Missed a deal-breaker" not in text.split("Got worse")[0]
+    assert 'Missed a deal-breaker: "Answers every question asked" on 2 examples.' in text.split("Got worse 0")[0]
     summary = demo.get("/summary.txt?suite=followup-email&current=v2&new=v3").text
-    assert "Verdict: Ready to roll out" in summary and "Overridden by you:" in summary
+    assert "Verdict: Not ready to roll out" in summary and "Overridden by you:" in summary
     assert "the AI reviewer said Got worse, counted as About the same. Reason: Pricing is answered in the PS." in summary
     detail = page_text(demo.get(RIDGEWAY + "?current=v2&new=v3").text)
     assert "You overrode the AI reviewer" in detail and "Remove my override" in detail
@@ -255,13 +257,20 @@ def test_live_overrides_are_saved_next_to_the_results(live, live_settings):
     live.post("/run", data={"suite": "followup-email", "current": "v2", "new": "v3"})
     wait_for_jobs(live)
     assert override(live, RIDGEWAY, call="other", count_as="worse", reason="Answered in the PS.").status_code == 303
-    path = live_settings.suites_dir / "followup-email/runs/overrides.json"
-    assert '"v2:v3"' in path.read_text() and "ridgeway-pricing" in path.read_text()
+    import json
+    from rollout_ready import evaluate
+    record = evaluate.latest_record(live.app.state.store, "followup-email", "v2", "v3")
+    path = live_settings.suites_dir / "followup-email/runs/override-events.json"
+    events = json.loads(path.read_text())
+    assert [(e["fingerprint"], e["evaluation_id"], e["case_id"], e["action"]) for e in events] == [
+        (record.fingerprint, record.id, "ridgeway-pricing", "set")]
     fresh = TestClient(create_app(live_settings, provider_factory=lambda s: FakeProvider()))
     assert "1 example overridden by you: Answered in the PS." in page_text(fresh.get(FEATURED).text)
     assert (live_settings.suites_dir / "followup-email/recorded/v3.json").read_text() == recorded
     live.post(RIDGEWAY + "/override/remove", data={"current": "v2", "new": "v3"})
     assert "overridden by you" not in fresh.get(FEATURED).text
+    # Removing appends an event; the override stays in the history.
+    assert [e["action"] for e in json.loads(path.read_text())] == ["set", "remove"]
 
 
 # example mix nudge -----------------------------------------------------------------
