@@ -1,6 +1,7 @@
 """Public live mode (ROLLOUT_PUBLIC=true): privacy between visitors, limits, spam trap and Origin check."""
 
 import json
+import re
 import time
 
 import pytest
@@ -92,7 +93,9 @@ def test_a_test_runs_both_versions_for_real(app):
     assert r.status_code == 303
     done = v.get(r.headers["location"], follow_redirects=False).headers["location"]
     page = v.get(done + "&tab=details").text
-    assert page.count("Real results") == 2 and "Sample results" not in page
+    text = " ".join(re.sub(r"<[^>]+>", " ", page).split())
+    assert "Results for version 2 Real results" in text and "Results for version 5 Real results" in text
+    assert "Sample results" not in page
     assert app.fake.generate_calls == 16  # 8 examples, both versions
     assert "2 of 3 live tests left today." in v.get("/test").text
 

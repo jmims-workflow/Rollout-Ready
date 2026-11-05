@@ -394,6 +394,23 @@ def hydrate(store: Store, record: EvaluationRecord) -> Evidence:
     return ev
 
 
+def _saved_so_far(store: Store, record: EvaluationRecord) -> Evidence:
+    """The items of a test that stopped mid-way, from the answers and reviews it saved under its own inputs."""
+    from .compare import record_suite
+    suite = record_suite(record)
+    cases = [Case(id=e.id, name=e.name, label=e.label, kind=e.kind, input=e.input) for e in record.examples]
+    versions = [Version(id=v.id, number=v.number, title=v.title, note=v.note, created=v.created, text=v.text)
+                for v in ([record.baseline] if record.kind == "baseline" else [record.baseline, record.candidate])]
+    ev = Evidence(record)
+    items = []
+    for p in plan(store, suite, cases, versions, record.reviewer_model):
+        if p.answer and p.review:
+            ev.answers[p.answer.key], ev.reviews[p.review.key] = p.answer, p.review
+        items.append(_item(p.version.id, p.case, p.repetition, suite, p.answer, p.review))
+    ev.record = record.model_copy(update={"items": items})
+    return ev
+
+
 def mark_interrupted(store: Store, record: EvaluationRecord) -> EvaluationRecord:
     """A running record with no test behind it (the server restarted) becomes interrupted, once."""
     if record.status != "running":
@@ -401,7 +418,7 @@ def mark_interrupted(store: Store, record: EvaluationRecord) -> EvaluationRecord
     with _active_lock:
         if record.id in _active:
             return record
-    final = finalize(hydrate(store, record), status="interrupted")
+    final = finalize(_saved_so_far(store, record), status="interrupted")
     try:
         store.finish_evaluation(final)
     except Exception:  # someone else finished it first: read what they wrote

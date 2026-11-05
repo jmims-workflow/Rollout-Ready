@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import icon, pill, verdict_icon, notice, kind_tag, team_tag, deal_badge, nudge_box, honeypot %}
+{% from "_decision.html" import decision_block, errors_box with context %}
 {% block title %}{% if comp and comp.complete %}{{ comp.verdict }}: {% endif %}See results | {% endblock %}
 {% block content %}
 <h1 class="page-title">See results</h1>
@@ -42,13 +43,24 @@
 {{ notice("This is the saved example: version 4 of the follow-up email, replayed from sample results through the same quick checks, scoring and verdict as live mode. Nothing new was saved.", "info") }}
 {% endif %}
 
+{% if decision_errors and not (comp and comp.complete and (decide_kind or new_is_in_use)) %}
+{{ errors_box(decision_errors, "decision-errors") }}
+{% endif %}
 {% if error %}
 {{ notice(error, "error") }}
 {% elif current_id == new_id %}
 {{ notice("Pick two different versions to see results. Or test a change against this one.", "info") }}
 {% elif not comp.complete %}
-<div class="card">
-  <h2>Some results are missing</h2>
+{% set cut_answers = comp.record.items|selectattr("status", "equalto", "cut_off")|rejectattr("answer_key")|list|length if comp.record else 0 %}
+{% set cut_reviews = cut_off - cut_answers %}
+<div class="card" aria-labelledby="incomplete-h">
+  {% if comp.rows or saved_incomplete or interrupted %}<p class="source-tag"><span class="visually-hidden">Results: </span><span class="tag">{{ comp.source_label }}</span></p>{% endif %}
+  <h2 id="incomplete-h">Test incomplete</h2>
+  <p>Some answers or reviews are missing, so there's no verdict yet. Nothing can be rolled out until they're done.</p>
+  {% if comp.legacy %}<p>Older result: some details weren't recorded. It can't be used to roll out.</p>{% endif %}
+  {% if interrupted %}<p>This test was interrupted: {{ finished_items }} of {{ total_items }} finished.</p>{% endif %}
+  {% if cut_answers %}<p>{{ plural(cut_answers, 'answer') }} {{ 'was' if cut_answers == 1 else 'were' }} cut off at the length limit, so {{ 'it' if cut_answers == 1 else 'they' }} {{ "wasn't" if cut_answers == 1 else "weren't" }} scored.</p>{% endif %}
+  {% if cut_reviews %}<p>{{ plural(cut_reviews, 'review') }} {{ 'was' if cut_reviews == 1 else 'were' }} cut off at the length limit, so {{ 'that answer' if cut_reviews == 1 else 'those answers' }} {{ "wasn't" if cut_reviews == 1 else "weren't" }} scored.</p>{% endif %}
   {% for vid, cases in comp.missing.items() if cases %}
   <p>{{ vname(vid)|capitalize }} has no saved results yet for {{ plural(cases|length, 'example') }}: {{ cases|map(attribute='name')|join(', ') }}.</p>
   {% endfor %}
@@ -59,7 +71,7 @@
     <input type="hidden" name="new" value="{{ new_id }}">
     {{ honeypot("r-website") }}
     <p class="muted">{{ estimate }}</p>
-    <button class="btn" type="submit">Run the missing examples</button>
+    <button class="btn" type="submit">{% if interrupted %}Finish the test{% elif comp.legacy %}Run the test again{% elif saved_incomplete %}Retry the missing examples{% else %}Run the missing examples{% endif %}</button>
   </form>
   {% else %}
   <p class="muted">The demo only has sample results, so these examples can't be run here.</p>
@@ -67,12 +79,41 @@
 </div>
 {% else %}
 
+{% macro run_button(label, current, new) -%}
+<form method="post" action="/run" class="inline-form">
+  <input type="hidden" name="suite" value="{{ suite.id }}">
+  <input type="hidden" name="current" value="{{ current }}">
+  <input type="hidden" name="new" value="{{ new }}">
+  {{ honeypot("n-website-" ~ current ~ new) }}
+  <button class="btn" type="submit">{{ label }}</button>
+</form>
+{%- endmacro %}
+{% if stale %}
+<div class="notice warn" role="note">{{ icon('info') }}<div>
+  <p>Your examples or what good looks like changed since this version was tested. Test it again before rolling out.</p>
+  {{ run_button("Test again", current_id, new_id) }}
+</div></div>
+{% elif separate %}
+<div class="notice warn" role="note">{{ icon('info') }}<div>
+  <p>These results come from separate tests, so they can't be used to roll out. Test these two versions together to get a result you can use.</p>
+  {{ run_button("Test them together", current_id, new_id) }}
+</div></div>
+{% endif %}
+{% if changed %}
+<div class="notice warn" role="note">{{ icon('info') }}<div>
+  <p>This test compared version {{ comp.new.number }} with version {{ comp.current.number }}. Version {{ in_use_number }} is in use now, so it doesn't show how version {{ comp.new.number }} compares with what your team uses.</p>
+  {% if settings.is_live %}{{ run_button("Test version " ~ comp.new.number ~ " against version " ~ in_use_number, in_use_id, new_id) }}
+  {% else %}<p><a class="btn" href="{{ results_url(suite.id, in_use_id, new_id) }}">Test version {{ comp.new.number }} against version {{ in_use_number }}</a></p>{% endif %}
+</div></div>
+{% endif %}
+
 <section class="verdict verdict-{{ comp.verdict_key }}" aria-labelledby="verdict-title">
   <div class="verdict-head">
     {{ verdict_icon(comp.verdict_key) }}
     <div>
-      <p class="eyebrow">{{ vname(new_id)|capitalize }}, the version you're trying, compared with {{ vname(current_id) }}, the version your team uses now</p>
+      <p class="eyebrow">{{ vname(new_id)|capitalize }}, the version you're trying, compared with {{ vname(current_id) }}{% if current_id == in_use_id %}, the version your team uses now{% endif %}</p>
       <h2 id="verdict-title">{{ comp.verdict }}</h2>
+      <p class="source-tag"><span class="visually-hidden">Results: </span><span class="tag">{{ comp.source_label }}</span></p>
     </div>
   </div>
   <p class="explain">{{ comp.explanation }}</p>
@@ -104,6 +145,7 @@
   </div>
   <pre id="summary-text" hidden>{{ summary }}</pre>
 </section>
+{% if decide_kind or new_is_in_use %}{{ decision_block(comp, suite) }}{% endif %}
 
 <nav class="tabs" aria-label="Result details" id="examples">
   {% for key, label in [('examples','Examples'),('good','What good looks like'),('changes','What changed'),('details','Behind the scenes')] %}

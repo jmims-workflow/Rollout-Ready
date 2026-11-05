@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "_macros.html" import notice, kind_tag, team_tag, deal_badge, nudge_box, kind_field %}
+{% from "_decision.html" import steps, name_field, reason_field, mode_note, errors_box with context %}
 {% block title %}{{ suite.name }} | {% endblock %}
 {% block content %}
 <a class="back" href="/prompts">Your prompts</a>
@@ -20,14 +21,55 @@
   <h2 id="v-h">Versions</h2>
   <ul class="plain-list versions-list">
     {% for v in versions %}
-    <li><span class="version-id">Version {{ v.number }}</span>
-      <span>{% if v.title %}<strong>{{ v.title }}.</strong> {% endif %}{{ v.note }} <span class="muted small">Saved {{ v.created }}{% if v.id == in_use %}. Your team uses this now.{% endif %}</span>
+    {% set st = statuses[v.id] %}
+    <li id="version-{{ v.id }}"><span class="version-id">Version {{ v.number }}</span>
+      <span><span class="tag tag-status tag-{{ st|lower|replace(' ', '-') }}">{{ st }}</span>{% if st == "In use" and since %} <span class="small">since {{ day(since) }}</span>{% endif %}
+        {% if v.title %}<strong>{{ v.title }}.</strong> {% endif %}{{ v.note }} <span class="muted small">Saved {{ v.created }}</span>
+        {% if st == "In use" %}<span class="help">{{ in_use_help }}</span>{% endif %}
         <details class="inline"><summary>Show the prompt<span class="visually-hidden"> for version {{ v.number }}</span></summary><pre class="prompt-text" tabindex="0">{{ v.text }}</pre></details>
+        {% if st == "Retired" %}
+        {% set rf = return_form or {} %}
+        <details class="put-back" id="put-back-{{ v.id }}"{% if put_back == v.id %} open{% endif %}>
+          <summary>Put version {{ v.number }} back into use</summary>
+          {% if put_back == v.id %}{{ errors_box(return_errors, "return-errors") }}{% endif %}
+          {% set t = tested.get(v.id) %}
+          {% if t and t[0] == v.id %}<p>Version {{ v.number }} was last scored on its own on {{ day(t[1]) }}. That test doesn't compare it with version {{ in_use[1:] }}, which is in use now.</p>
+          {% elif t %}<p>Version {{ v.number }} was last tested against version {{ t[0][1:] }} on {{ day(t[1]) }}. That test doesn't compare it with version {{ in_use[1:] }}, which is in use now.</p>
+          {% else %}<p>Version {{ v.number }} hasn't been tested against the version in use.</p>{% endif %}
+          <p><a href="{{ results_url(suite.id, in_use, v.id) }}">Test it first</a> <span class="muted small">(optional)</span></p>
+          <form method="post" action="/prompts/{{ suite.id }}/return">
+            <input type="hidden" name="version" value="{{ v.id }}">
+            <input type="hidden" name="token" value="{{ token }}">
+            {{ steps(v.number, v.text, suite, "back-" ~ v.id) }}
+            {{ reason_field("back-" ~ v.id, "Why go back to version " ~ v.number ~ "?", rf.get("reason", "") if put_back == v.id else "") }}
+            {{ name_field("back-" ~ v.id, rf.get("name", "") if put_back == v.id else "") }}
+            <button class="btn" type="submit">I've updated it: mark version {{ v.number }} as in use</button>
+            <p class="muted small">{{ recorded_note }}</p>
+            {{ mode_note() }}
+          </form>
+        </details>
+        {% endif %}
       </span>
     </li>
     {% endfor %}
   </ul>
   <p class="muted small">Versions are never overwritten or deleted. Each version you try gets the next number.</p>
+</section>
+
+<section class="card" aria-labelledby="h-h">
+  <h2 id="h-h">What's been in use</h2>
+  <ul class="plain-list history-list">
+    {% for e in events %}
+    <li><span class="muted small">{{ day(e.timestamp) }}</span>
+      {% if e.type == "baseline" %}
+        {% if e.id == "legacy-baseline" %}Version {{ e.to_version[1:] }} was in use before this history started.
+        {% else %}Version {{ e.to_version[1:] }} recorded as in use by the owner. <a href="/prompts/{{ suite.id }}/releases/{{ e.id }}">Details<span class="visually-hidden"> for version {{ e.to_version[1:] }}</span></a>{% endif %}
+      {% else %}Version {{ e.from_version[1:] }} to version {{ e.to_version[1:] }}. {{ e.summary }}{% if e.confirmed_by %} Confirmed by {{ e.confirmed_by }}.{% endif %}
+        <a href="/prompts/{{ suite.id }}/releases/{{ e.id }}">Details<span class="visually-hidden"> for version {{ e.from_version[1:] }} to version {{ e.to_version[1:] }}</span></a>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
 </section>
 
 <section class="card" aria-labelledby="c-h">

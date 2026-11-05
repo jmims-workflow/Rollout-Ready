@@ -2,7 +2,7 @@
 
 Demo mode writes nothing to disk, so the cookie is the only place. Browsers cap a
 cookie at about 4,096 bytes, so events are stored in a short form (one-letter
-fields, 16-character fingerprints, 8-character ids) and every change is measured
+fields, 16-character fingerprints, 8-character override ids) and every change is measured
 before it is saved: if it would take the cookie past COOKIE_BUDGET, it is refused,
 nothing changes, and the visitor is offered "Start over".
 """
@@ -69,7 +69,7 @@ def unpack_override(d: dict) -> OverrideEvent:
 
 
 def pack_release(e: ReleaseEvent) -> dict:
-    out = {"i": e.id[:8], "y": _TYPES[e.type], "o": e.to_version, "t": e.timestamp}
+    out = {"i": e.id, "y": _TYPES[e.type], "o": e.to_version, "t": e.timestamp}  # full id: pages link to it
     optional = {"f": e.from_version, "b": e.confirmed_by, "e": e.evaluation_id,
                 "s": _SOURCES.get(e.evaluation_source, ""), "v": _VERDICTS.get(e.verdict or "", ""),
                 "x": [i[:8] for i in e.override_ids], "w": e.reason, "k": e.token}

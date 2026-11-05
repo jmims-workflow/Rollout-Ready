@@ -31,12 +31,18 @@
     btn.hidden = false;
     btn.addEventListener("click", function () {
       navigator.clipboard.writeText(source.textContent).then(function () {
-        if (status) status.textContent = "Copied. Paste it into Slack or an email.";
+        if (status) status.textContent = btn.getAttribute("data-copied") || "Copied. Paste it into Slack or an email.";
       }, function () {
-        if (status) status.textContent = "Could not copy. Use Download summary instead.";
+        if (status) status.textContent = btn.hasAttribute("data-copied")
+          ? "Could not copy. Open \"Show the instructions\" and copy them from there."
+          : "Could not copy. Use Download summary instead.";
       });
     });
   });
+
+  // "Nothing was recorded": move focus to the list of problems so it is read straight away.
+  var problems = document.querySelector("[data-focus-on-load]");
+  if (problems) problems.focus();
 
   // "I disagree with the AI reviewer": only ask how the example should count for "Something else".
   document.querySelectorAll("form[data-disagree]").forEach(function (form) {
