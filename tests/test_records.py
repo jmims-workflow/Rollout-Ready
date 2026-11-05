@@ -62,6 +62,26 @@ def test_no_temporary_files_left_behind(rs):
 
 
 # test 15: concurrent updates do not lose changes ------------------------------------
+def run_workers(count, work):
+    """Run work(n) on count threads at once. Returns every exception a worker raised."""
+    errors = []
+    start = threading.Barrier(count)
+
+    def wrapped(n):
+        try:
+            start.wait()
+            work(n)
+        except BaseException as exc:  # noqa: BLE001 - the test must see every failure
+            errors.append(exc)
+
+    pool = [threading.Thread(target=wrapped, args=(n,)) for n in range(count)]
+    for t in pool:
+        t.start()
+    for t in pool:
+        t.join()
+    return errors
+
+
 def test_concurrent_updates_lose_nothing(rs):
     threads, per_thread = 8, 25
 
@@ -69,14 +89,22 @@ def test_concurrent_updates_lose_nothing(rs):
         for i in range(per_thread):
             rs.update("releases", lambda cur, n=n, i=i: [*(cur or []), f"{n}-{i}"])
 
-    pool = [threading.Thread(target=work, args=(n,)) for n in range(threads)]
-    for t in pool:
-        t.start()
-    for t in pool:
-        t.join()
+    assert run_workers(threads, work) == []
     events = rs.read("releases")
     assert len(events) == threads * per_thread
     assert len(set(events)) == threads * per_thread
+
+
+def test_concurrency_harness_reports_a_raising_worker(rs):
+    """A worker that fails after its last write must still fail the test."""
+    def work(n):
+        rs.update("releases", lambda cur, n=n: [*(cur or []), n])
+        if n == 3:
+            raise RuntimeError("worker 3 failed after writing")
+
+    errors = run_workers(6, work)
+    assert [str(e) for e in errors] == ["worker 3 failed after writing"]
+    assert len(rs.read("releases")) == 6  # every write landed, so only the error list catches it
 
 
 def test_concurrent_write_once_has_one_winner(rs):
@@ -86,11 +114,7 @@ def test_concurrent_write_once_has_one_winner(rs):
         if rs.write_once("evaluations/same", {"by": n}):
             wins.append(n)
 
-    pool = [threading.Thread(target=work, args=(n,)) for n in range(10)]
-    for t in pool:
-        t.start()
-    for t in pool:
-        t.join()
+    assert run_workers(10, work) == []
     assert len(wins) == 1
     assert rs.read("evaluations/same") == {"by": wins[0]}
 

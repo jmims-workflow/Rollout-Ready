@@ -7,6 +7,7 @@ Demo mode never comes through here.
 from __future__ import annotations
 
 import threading
+import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -15,7 +16,7 @@ from typing import Callable
 from .compare import missing_cases
 from .judge import judge_output
 from .models import CaseResult, Run, VersionResults
-from .provider import Provider, ProviderError
+from .provider import CUT_OFF_MESSAGE, Provider, ProviderError, call_with_retries
 from .storage import Store, input_hash, rubric_hash
 
 SECONDS_PER_CALL = 4
@@ -50,8 +51,14 @@ def run_version(
     provider: Provider,
     judge_model: str,
     progress: Callable[[int, int, str], None] | None = None,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> int:
-    """Run and judge the cases that have no usable results yet. Returns calls made."""
+    """Run and judge the cases that have no usable results yet. Returns calls made.
+
+    Temporary failures are retried at most twice per call. An answer cut off at the
+    length limit is never saved or scored, and stops the run like any other failure,
+    so the results saved before it are kept.
+    """
     suite = store.load_suite(suite_id)
     cases = store.load_cases(suite_id)
     version = store.load_version(suite_id, version_id)
@@ -65,15 +72,22 @@ def run_version(
         for _ in range(suite.repeats):
             if progress:
                 progress(done, total, f"Writing an answer for “{case.name}”")
-            gen = provider.generate(model=suite.model, prompt=version.text, user_input=case.input)
+            made = call_with_retries(
+                lambda: provider.generate(model=suite.model, prompt=version.text, user_input=case.input), sleep=sleep)
+            gen = made.value
+            if gen.cut_off:
+                raise ProviderError(CUT_OFF_MESSAGE, kind="cut_off",
+                                    input_tokens=made.failed_input_tokens + gen.input_tokens,
+                                    output_tokens=made.failed_output_tokens + gen.output_tokens)
             done += 1
             if progress:
                 progress(done, total, f"Scoring the answer for “{case.name}”")
-            scores, parsed = judge_output(provider, judge_model, suite, case, gen.text)
+            scores, parsed = judge_output(provider, judge_model, suite, case, gen.text, sleep=sleep)
             done += 1
             runs.append(Run(
                 output=gen.text, scores=scores,
-                input_tokens=gen.input_tokens, output_tokens=gen.output_tokens,
+                input_tokens=gen.input_tokens + made.failed_input_tokens,
+                output_tokens=gen.output_tokens + made.failed_output_tokens,
                 judge_input_tokens=parsed.input_tokens, judge_output_tokens=parsed.output_tokens,
             ))
         saved.cases[case.id] = CaseResult(
