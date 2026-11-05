@@ -327,7 +327,7 @@ def test_fix5_rollback_links_to_the_put_back_form(demo):
     record = demo.get(r.headers["location"]).text
     assert "If something goes wrong, copy version 2, paste it back into your tool, and mark version 2 as in use." \
         in page_text(record)
-    link = "/prompts/followup-email?put_back=v2#put-back-v2"
+    link = "/i/followup-email?put_back=v2#put-back-v2"
     assert f'href="{link}"' in record and "Put version 2 back into use" in page_text(record)
     prompt = demo.get(link.split("#")[0]).text
     assert '<details class="put-back" id="put-back-v2" open>' in prompt

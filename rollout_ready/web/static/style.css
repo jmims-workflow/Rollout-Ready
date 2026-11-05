@@ -480,3 +480,16 @@ progress { width: 100%; height: 1.25rem; accent-color: var(--primary); }
 .set-status { margin: .5rem 0 0; padding-top: .5rem; border-top: 1px solid var(--line); color: var(--ink); }
 .more-sets > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; color: var(--primary); }
 .page-head { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+
+/* tabs and the instructions page --------------------------------------------- */
+.tabs[role="tablist"] { display: flex; flex-wrap: wrap; gap: .25rem; border-bottom: 1px solid var(--line); margin: 1.5rem 0 1rem; }
+.tabs[role="tablist"] a {
+  min-height: 44px; display: inline-flex; align-items: center; padding: 0 .9rem; color: var(--ink);
+  border: 1px solid transparent; border-bottom: 0; border-radius: var(--radius-small) var(--radius-small) 0 0; text-decoration: none;
+}
+.tabs[role="tablist"] a[aria-selected="true"] { color: var(--primary); background: var(--card); border-color: var(--line); font-weight: 600; margin-bottom: -1px; }
+.tab-panel[hidden] { display: none; }
+.test-history li { display: flex; flex-wrap: wrap; gap: .25rem 1rem; align-items: center; padding: .6rem 0; border-top: 1px solid var(--line); }
+.test-history li:first-child { border-top: 0; }
+.test-history a { min-height: 44px; display: inline-flex; align-items: center; }
+.in-use-card h2, .waiting-card h2 { font-size: 1.15rem; margin: 0 0 .4rem; }

@@ -70,7 +70,7 @@
     <p class="muted small">{{ recorded_note }}</p>
     {{ mode_note() }}
   </form>
-  <p><a href="/prompts/{{ suite.id }}">Not now</a></p>
+  <p><a href="/i/{{ suite.id }}">Not now</a></p>
   {% elif decide_kind == "exception" %}
   {% if comp.verdict == "Not ready to roll out" %}
   <p><a class="btn btn-secondary" href="/test?suite={{ suite.id }}&amp;against={{ in_use_id }}">Test a change</a></p>

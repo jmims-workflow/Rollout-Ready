@@ -1,23 +1,60 @@
 {% extends "base.html" %}
-{% from "_macros.html" import notice, kind_tag, team_tag, deal_badge, nudge_box, kind_field %}
+{% from "_macros.html" import notice, kind_tag, team_tag, deal_badge, nudge_box, kind_field, tab_list, whats_this %}
 {% from "_decision.html" import steps, name_field, reason_field, mode_note, errors_box with context %}
 {% block title %}{{ suite.name }} | {% endblock %}
 {% block content %}
-<a class="back" href="/prompts">Your prompts</a>
-<div class="title-row">
-  <h1>{{ suite.name }}</h1>
-  {{ team_tag(suite) }}
-</div>
+<a class="back" href="/">Manage</a>
+<p class="set-tags"><span class="tag">{{ suite.type_label }}</span> {{ team_tag(suite) }}</p>
+<h1 class="page-title">{{ suite.name }}</h1>
 {% if suite.description %}<p class="lede">{{ suite.description }}</p>{% endif %}
-<div class="meta-row"><span>Who uses it: {{ suite.who_uses_it or "Not set" }}</span><span>Model tested: <span class="mono">{{ suite.model }}</span></span></div>
+<p class="meta-row"><span>Who uses it: {{ suite.who_uses_it or "Not set" }}</span>{% if suite.owner_name %}<span>Owner: {{ suite.owner_name }}{% if suite.owner_team %}, {{ suite.owner_team }}{% endif %}</span>{% endif %}</p>
 {% if message %}{{ notice(message, "info") }}{% endif %}
 {% if error %}{{ notice(error, "error") }}{% endif %}
 <div class="row-actions row-gap">
-  {% if versions|length > 1 %}<a class="btn btn-secondary" href="/results?suite={{ suite.id }}">See results</a>{% endif %}
-  <a class="btn" href="/test?suite={{ suite.id }}">Test a change</a>
+  <a class="btn" href="{{ primary.url }}">{{ primary.label }}</a>
+  {% if primary.label != "Test a change" %}<a class="text-link" href="{{ test_link }}">Test a change</a>{% endif %}
 </div>
 
-<section class="card" aria-labelledby="v-h">
+{% if in_use_version %}
+<section class="card in-use-card" aria-labelledby="inuse-h">
+  <h2 id="inuse-h"><span class="tag tag-status tag-in-use">In use</span> Version {{ in_use_version.number }}{% if in_use_version.title %}: {{ in_use_version.title }}{% endif %}</h2>
+  <p class="small">{% if since %}Since {{ day(since) }}. {% endif %}<span class="muted">{{ in_use_help }}</span></p>
+  <div class="copy-row">
+    <button class="btn btn-secondary" type="button" data-copy-target="in-use-text" data-copied="Copied." hidden>Copy the instructions</button>
+    <span class="copy-status" role="status" aria-live="polite"></span>
+  </div>
+  <details class="inline"><summary>Show the instructions<span class="visually-hidden"> for version {{ in_use_version.number }}</span></summary><pre class="prompt-text" id="in-use-text" tabindex="0">{{ in_use_version.text }}</pre></details>
+</section>
+{% endif %}
+
+{% if waiting %}
+<section class="card waiting-card" aria-labelledby="waiting-h">
+  <h2 id="waiting-h">Waiting: version {{ waiting.draft.number }}{% if waiting.draft.title %}, {{ waiting.draft.title }}{% endif %}</h2>
+  <p>{{ waiting.status }}</p>
+  {% if waiting.comp and waiting.against != in_use %}<p>This test compared version {{ waiting.draft.number }} with version {{ waiting.against[1:] }}. Version {{ in_use[1:] }} is in use now, so it doesn't show how version {{ waiting.draft.number }} compares with what your team uses.</p>{% endif %}
+  <p><a href="{{ waiting.url }}">{{ "Review results" if waiting.comp else "Test it" }}<span class="visually-hidden"> for version {{ waiting.draft.number }}</span></a></p>
+</section>
+{% endif %}
+
+<div class="tabbed" id="tabs">
+{{ tab_list("About these instructions", [("history", "Test history"), ("versions", "Version history"), ("examples", "Examples"), ("good", "What good looks like")], tab) }}
+
+<section class="card tab-panel" role="tabpanel" id="panel-history" aria-labelledby="tab-history"{% if tab != "history" %} hidden{% endif %}>
+  <h2>Test history</h2>
+  {% if history %}
+  <ul class="plain-list test-history">
+    {% for h in history %}
+    <li><span>Version {{ h.candidate }} vs version {{ h.baseline }}{% if h.then_in_use %} (in use at the time){% endif %}</span>
+      <span class="muted small">{{ day(h.date) }}</span>
+      <span class="tag">{{ h.verdict }}</span>
+      <a href="{{ h.url }}">View<span class="visually-hidden"> version {{ h.candidate }} vs version {{ h.baseline }}</span></a></li>
+    {% endfor %}
+  </ul>
+  {% else %}<p>No tests yet. <a href="{{ test_link }}">Test a change</a> to see one here.</p>{% endif %}
+</section>
+
+<section class="card tab-panel" role="tabpanel" id="panel-versions" aria-labelledby="tab-versions"{% if tab != "versions" %} hidden{% endif %}>
+
   <h2 id="v-h">Versions</h2>
   <ul class="plain-list versions-list">
     {% for v in versions %}
@@ -54,10 +91,8 @@
     {% endfor %}
   </ul>
   <p class="muted small">Versions are never overwritten or deleted. Each version you try gets the next number.</p>
-</section>
 
-<section class="card" aria-labelledby="h-h">
-  <h2 id="h-h">What's been in use</h2>
+  <h3 id="h-h">What's been in use</h3>
   <ul class="plain-list history-list">
     {% for e in events %}
     <li><span class="muted small">{{ day(e.timestamp) }}</span>
@@ -72,7 +107,8 @@
   </ul>
 </section>
 
-<section class="card" aria-labelledby="c-h">
+<section class="card tab-panel" role="tabpanel" id="panel-examples" aria-labelledby="tab-examples"{% if tab != "examples" %} hidden{% endif %}>
+
   <h2 id="c-h">Examples (<span data-case-count>{{ cases|length }}</span>)</h2>
   <ul class="plain-list case-list" data-case-list>
     {% for c in cases %}
@@ -104,7 +140,8 @@
   <details class="inline" id="add-example"><summary>Add an example</summary>{% include "_add_case.html" %}</details>
 </section>
 
-<section class="card" aria-labelledby="r-h">
+<section class="card tab-panel" role="tabpanel" id="panel-good" aria-labelledby="tab-good"{% if tab != "good" %} hidden{% endif %}>
+
   <h2 id="r-h">What good looks like</h2>
   <div class="table-card table-scroll">
   <table>
@@ -116,4 +153,5 @@
   {% if suite.checks %}<ul>{% for c in suite.checks %}<li>{{ c.label }}</li>{% endfor %}</ul>{% else %}<p class="muted">None.</p>{% endif %}
   <p class="muted small">An example counts as got worse or got better when its score moves by half a point or more. A score of {{ cutoff }} or lower on a deal-breaker blocks a rollout. Each example runs {{ suite.repeats }} time{{ 's' if suite.repeats != 1 }} per version.</p>
 </section>
+</div>
 {% endblock %}

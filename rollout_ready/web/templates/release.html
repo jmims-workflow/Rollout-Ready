@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{% if event.from_version %}Version {{ event.from_version[1:] }} to version {{ event.to_version[1:] }}{% else %}Version {{ event.to_version[1:] }} in use{% endif %} | {% endblock %}
 {% block content %}
-<a class="back" href="/prompts/{{ suite.id }}">{{ suite.name }}</a>
+<a class="back" href="/i/{{ suite.id }}">{{ suite.name }}</a>
 <h1 class="page-title">{% if event.from_version %}Version {{ event.from_version[1:] }} to version {{ event.to_version[1:] }}{% else %}Version {{ event.to_version[1:] }} in use{% endif %}</h1>
 
 <section class="card" aria-labelledby="rel-h">
@@ -33,10 +33,10 @@
     <span class="copy-status" role="status" aria-live="polite"></span>
   </div>
   <details class="inline"><summary>Show the instructions<span class="visually-hidden"> for version {{ back }}</span></summary><pre class="prompt-text" id="from-text" tabindex="0">{{ from_text }}</pre></details>
-  {% if from_status == "Retired" %}<p><a href="/prompts/{{ suite.id }}?put_back={{ event.from_version }}#put-back-{{ event.from_version }}">Put version {{ back }} back into use</a></p>{% endif %}
+  {% if from_status == "Retired" %}<p><a href="/i/{{ suite.id }}?put_back={{ event.from_version }}#put-back-{{ event.from_version }}">Put version {{ back }} back into use</a></p>{% endif %}
 </section>
 {% endif %}
 
 <p class="muted small">{{ recorded_note }}</p>
-<p><a href="/prompts/{{ suite.id }}">Back to {{ suite.name }}</a></p>
+<p><a href="/i/{{ suite.id }}">Back to {{ suite.name }}</a></p>
 {% endblock %}

@@ -287,25 +287,88 @@ def create_app(
         events = release_history(request, suite.id)
         use = in_use(request, suite, versions)
         number = {v.id: v.number for v in versions}
+        w = waiting_info(request, st, suite, versions, events, use)
+        return dict(suite=suite, url=f"/i/{suite.id}", in_use_number=number.get(use, 0),
+                    since=releases.since(events, use), waiting=w is not None,
+                    status=w["status"] if w else "No changes waiting.", status_url=w["url"] if w else "")
+
+    def waiting_info(request: Request, st: Store, suite: Suite, versions, events, use: str) -> dict | None:
+        """The newest draft after the version in use, and its latest result, if there is one."""
+        number = {v.id: v.number for v in versions}
         drafts = [v for v in versions if releases.status(v.id, events, use) == "Draft" and v.number > number.get(use, 0)]
-        card = dict(suite=suite, url=f"/prompts/{suite.id}", in_use_number=number.get(use, 0),
-                    since=releases.since(events, use), waiting=bool(drafts), status="No changes waiting.",
-                    status_url="")
-        if drafts:
-            draft = drafts[-1]
-            tested = last_test(request, st, suite.id, draft.id)
-            # Its latest saved test, or else its results against the version in use.
-            against = tested[0] if tested and tested[0] != draft.id else use
-            try:
-                comp = comparison(request, suite.id, against, draft.id)
-            except SuiteError:
-                comp = None
-            if comp is not None and comp.complete:
-                card["status"] = f"Version {draft.number} tested against version {number[against]}: {comp.verdict}."
-                card["status_url"] = results_url(suite.id, against, draft.id)
-                return card
-            card["status"] = f"Version {draft.number} is waiting for a complete test."
-        return card
+        if not drafts:
+            return None
+        draft = drafts[-1]
+        tested = last_test(request, st, suite.id, draft.id)
+        # Its latest saved test, or else its results against the version in use.
+        against = tested[0] if tested and tested[0] != draft.id else use
+        try:
+            comp = comparison(request, suite.id, against, draft.id)
+        except SuiteError:
+            comp = None
+        if comp is not None and comp.complete:
+            return dict(draft=draft, against=against, comp=comp, url=results_url(suite.id, against, draft.id),
+                        status=f"Version {draft.number} tested against version {number[against]}: {comp.verdict}.")
+        return dict(draft=draft, against=against, comp=None, url=test_url(suite.id),
+                    status=f"Version {draft.number} is waiting for a complete test.")
+
+    def test_url(suite_id: str, **extra) -> str:
+        return "/test?" + urlencode({"suite": suite_id, **extra})
+
+    def primary_action(w: dict | None, use: str, suite_id: str) -> dict:
+        """The instructions page's one primary button (spec 7b)."""
+        comp = w["comp"] if w else None
+        if comp is not None:
+            relied_on = comp.saved or comp.record.source == "recorded"
+            if comp.verdict == scoring.READY and w["against"] == use and relied_on:
+                return dict(label=f"Put version {comp.new.number} into use", url=w["url"] + "#put-into-use")
+            return dict(label="Review results", url=w["url"])
+        return dict(label="Test a change", url=test_url(suite_id))
+
+    def test_history(request: Request, st: Store, suite: Suite, versions, events) -> list[dict]:
+        """Every test of this set, newest first. Each row keeps the pair it compared (spec test 20)."""
+        number = {v.id: v.number for v in versions}
+        rows, seen = [], set()
+
+        def in_use_at(stamp: str) -> str:
+            current = ""
+            for e in events:
+                if e.timestamp <= stamp:
+                    current = e.to_version
+            return current
+
+        if settings.is_live:
+            for rid in reversed(st.evaluation_ids(suite.id)):
+                rec = evaluate.mark_interrupted(st, st.load_evaluation(suite.id, rid))
+                if rec is None or rec.kind != "comparison":
+                    continue
+                verdict = rec.verdict if rec.status == "complete" else scoring.INCOMPLETE
+                rows.append(dict(baseline=rec.baseline.number, candidate=rec.candidate.number,
+                                 then_in_use=rec.baseline_in_use, date=rec.finished or rec.started,
+                                 verdict=verdict, url=f"/i/{suite.id}/tests/{rid}"))
+                seen.add((rec.baseline.id, rec.candidate.id))
+        if not settings.is_live or settings.is_public:
+            pairs = [evaluate.parse_recorded_id(e.evaluation_id) for e in events if e.type in ("rollout", "exception")]
+            for v in versions:
+                use_then = in_use_at(f"{v.created}T23:59:59Z")
+                if use_then and use_then != v.id and number.get(use_then, 0) < v.number:
+                    pairs.append((use_then, v.id))
+            for pair in dict.fromkeys(p for p in pairs if p):
+                if pair in seen:
+                    continue
+                try:
+                    comp = build_comparison(st, suite.id, *pair, live=False)
+                except SuiteError:
+                    continue
+                if not comp.complete:
+                    continue
+                rec = comp.record
+                rows.append(dict(baseline=number[pair[0]], candidate=number[pair[1]],
+                                 then_in_use=in_use_at(rec.finished) == pair[0], date=rec.finished,
+                                 verdict=comp.verdict, url=f"/i/{suite.id}/tests/{rec.id}"))
+        return sorted(rows, key=lambda r: r["date"], reverse=True)
+
+
 
     # results -----------------------------------------------------------
     @app.get("/results", response_class=HTMLResponse)
@@ -475,7 +538,7 @@ def create_app(
                 comp = None
             if comp is not None:
                 url = (results_url(suite_id, comp.current.id, comp.new.id) if event.evaluation_source == "recorded"
-                       else f"/prompts/{suite_id}/tests/{event.evaluation_id}")
+                       else f"/i/{suite_id}/tests/{event.evaluation_id}")
                 based_on = dict(comp=comp, url=url)
         overrides = []
         if event.override_ids:
@@ -487,7 +550,11 @@ def create_app(
                     overrides=overrides, case_names=names, from_status=from_status,
                     from_text=next((v.text for v in versions if v.id == event.from_version), ""))
 
-    @app.get("/prompts/{suite_id}/tests/{evaluation_id}", response_class=HTMLResponse)
+    @app.get("/prompts/{suite_id}/tests/{evaluation_id}")
+    def old_saved_test(suite_id: str, evaluation_id: str):
+        return RedirectResponse(f"/i/{suite_id}/tests/{evaluation_id}", status_code=301)
+
+    @app.get("/i/{suite_id}/tests/{evaluation_id}", response_class=HTMLResponse)
     def saved_test(request: Request, suite_id: str, evaluation_id: str):
         """One saved test, showing its own evidence."""
         try:
@@ -864,15 +931,21 @@ def create_app(
         suite_id = st.create_suite(suite, new_cases, f["prompt_text"].strip(), note="The prompt the team uses today.")
         # Version 1 is recorded as in use by the owner. In public mode the name is "you".
         releases.StoreLog(st, suite_id).append(releases.baseline_event("v1", "you" if settings.is_public else ""))
-        job = start_job(request, "Scoring version 1 to set the starting point", f"/prompts/{suite_id}?created=1",
+        job = start_job(request, "Scoring version 1 to set the starting point", f"/i/{suite_id}?created=1",
                         run_versions(st, suite_id, ["v1"], make_provider(), settings.judge_model))
         return RedirectResponse(f"/jobs/{job.id}", status_code=303)
 
-    @app.get("/prompts/{suite_id}", response_class=HTMLResponse)
-    def suite_page(request: Request, suite_id: str, created: str = "", saved: str = "", put_back: str = ""):
+    @app.get("/prompts/{suite_id}")
+    def old_suite_page(request: Request, suite_id: str):
+        query = f"?{request.query_params}" if request.query_params else ""
+        return RedirectResponse(f"/i/{suite_id}{query}", status_code=301)
+
+    @app.get("/i/{suite_id}", response_class=HTMLResponse)
+    def suite_page(request: Request, suite_id: str, created: str = "", saved: str = "", put_back: str = "",
+                   tab: str = ""):
         message = ("Saved. Version 1 is scored, so every version you try is compared with it." if created
                    else "Saved." if saved else None)
-        return suite_view(request, suite_id, message=message, put_back=put_back)
+        return suite_view(request, suite_id, message=message, put_back=put_back, tab=tab)
 
     def last_test(request: Request, st: Store, suite_id: str, version_id: str) -> tuple[str, str] | None:
         """(the version it was compared with, the date) for this version's latest complete test."""
@@ -893,7 +966,7 @@ def create_app(
         return best
 
     def suite_view(request: Request, suite_id: str, status: int = 200, message: str | None = None,
-                   put_back: str = "", **extra):
+                   put_back: str = "", tab: str = "", **extra):
         st = store_for(request)
         try:
             suite = st.load_suite(suite_id)
@@ -904,11 +977,18 @@ def create_app(
         use = in_use(request, suite, versions)
         statuses = {v.id: releases.status(v.id, events, use) for v in versions}
         tested = {v.id: last_test(request, st, suite_id, v.id) for v in versions if statuses[v.id] == "Retired"}
+        w = waiting_info(request, st, suite, versions, events, use)
+        if put_back or extra.get("return_errors"):
+            tab = "versions"
+        tab = tab if tab in ("history", "versions", "examples", "good") else "history"
+        in_use_version = next((v for v in versions if v.id == use), None)
         return page(request, "suite.html", status=status, nav="prompts", suite=suite, versions=versions,
+                    waiting=w, primary=primary_action(w, use, suite_id), history=test_history(request, st, suite, versions, events),
+                    in_use_version=in_use_version, tab=tab, test_link=test_url(suite_id),
                     cases=cases, in_use=use, statuses=statuses, since=releases.since(events, use),
                     tested=tested, events=list(reversed(events)), put_back=put_back, token=releases.new_token(),
                     message=message, error=None, nudge=needs_harder_examples(cases), mix=example_mix(cases),
-                    next_url=f"/prompts/{suite_id}?saved=1#add-example", **extra)
+                    next_url=f"/i/{suite_id}?saved=1&tab=examples#add-example", **extra)
 
     def _kind(value: str) -> str:
         return value if value in CASE_KINDS else "everyday"
@@ -942,7 +1022,7 @@ def create_app(
         if err:
             if wants_json(request):
                 return JSONResponse({"ok": False, "error": err}, status_code=400)
-            return problem(request, err, back_url=f"/prompts/{suite_id}", back_text="Back to the prompt")
+            return problem(request, err, back_url=f"/i/{suite_id}?tab=examples", back_text="Back to the examples")
         try:
             case = st.add_case(suite_id, name, label, text, kind)
         except SuiteError as exc:
@@ -958,7 +1038,8 @@ def create_app(
             return {"ok": True, "case": case.model_dump(), "kind_label": case.kind_label, "count": len(cases),
                     "estimate": estimate,
                     "nudge": needs_harder_examples(cases)}
-        return RedirectResponse(_safe_next(str(form.get("next", "")), f"/prompts/{suite_id}?saved=1"), status_code=303)
+        return RedirectResponse(_safe_next(str(form.get("next", "")), f"/i/{suite_id}?saved=1&tab=examples"),
+                                status_code=303)
 
     @app.post("/prompts/{suite_id}/examples/{case_id}")
     async def edit_case(request: Request, suite_id: str, case_id: str):
@@ -967,12 +1048,12 @@ def create_app(
             return problem(request, READ_ONLY, status=403, heading="Demo", info=True)
         name, label, text, kind, err = _case_fields(form)
         if err:
-            return problem(request, err, back_url=f"/prompts/{suite_id}", back_text="Back to the prompt")
+            return problem(request, err, back_url=f"/i/{suite_id}?tab=examples", back_text="Back to the examples")
         try:
             store_for(request).update_case(suite_id, case_id, name, label, text, kind)
         except SuiteError as exc:
             return problem(request, str(exc), status=404)
-        return RedirectResponse(f"/prompts/{suite_id}?saved=1", status_code=303)
+        return RedirectResponse(f"/i/{suite_id}?saved=1&tab=examples", status_code=303)
 
     @app.get("/how-it-works", response_class=HTMLResponse)
     def how_it_works(request: Request):

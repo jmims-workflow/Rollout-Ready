@@ -78,6 +78,13 @@
 {%- endif -%}
 {%- endmacro %}
 
+{% macro tab_list(label, tabs, current) -%}
+{# Tabs that work without JavaScript (each is a link to ?tab=...); app.js adds arrow keys and in-page switching. #}
+<div class="tabs" role="tablist" aria-label="{{ label }}">
+  {% for key, name in tabs %}<a role="tab" id="tab-{{ key }}" href="?tab={{ key }}#tabs" aria-controls="panel-{{ key }}" aria-selected="{{ 'true' if key == current else 'false' }}"{% if key != current %} tabindex="-1"{% endif %}>{{ name }}</a>{% endfor %}
+</div>
+{%- endmacro %}
+
 {% macro whats_this(term, text) -%}
 {# "What's this?" help at the first mention of a term on a page. #}
 <details class="whats-this"><summary>What's this?<span class="visually-hidden"> {{ term }}</span></summary><p>{{ text }}</p></details>

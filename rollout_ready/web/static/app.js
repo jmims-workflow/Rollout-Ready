@@ -40,6 +40,37 @@
     });
   });
 
+  // Tabs: switch in place, with arrow keys, Home and End. Without JavaScript each tab is a link.
+  document.querySelectorAll('[role="tablist"]').forEach(function (list) {
+    var tabs = Array.prototype.slice.call(list.querySelectorAll('[role="tab"]'));
+    function select(tab, focus) {
+      tabs.forEach(function (t) {
+        var on = t === tab;
+        t.setAttribute("aria-selected", on ? "true" : "false");
+        if (on) { t.removeAttribute("tabindex"); } else { t.setAttribute("tabindex", "-1"); }
+        var panel = document.getElementById(t.getAttribute("aria-controls"));
+        if (panel) panel.hidden = !on;
+      });
+      if (focus) tab.focus();
+      if (window.history && history.replaceState) {
+        var url = new URL(window.location.href);
+        url.searchParams.set("tab", tab.id.replace("tab-", ""));
+        history.replaceState(null, "", url.pathname + url.search + url.hash);
+      }
+    }
+    tabs.forEach(function (tab, i) {
+      tab.addEventListener("click", function (e) { e.preventDefault(); select(tab, false); });
+      tab.addEventListener("keydown", function (e) {
+        var next = null;
+        if (e.key === "ArrowRight") next = tabs[(i + 1) % tabs.length];
+        else if (e.key === "ArrowLeft") next = tabs[(i - 1 + tabs.length) % tabs.length];
+        else if (e.key === "Home") next = tabs[0];
+        else if (e.key === "End") next = tabs[tabs.length - 1];
+        if (next) { e.preventDefault(); select(next, true); }
+      });
+    });
+  });
+
   // "Nothing was recorded": move focus to the list of problems so it is read straight away.
   var problems = document.querySelector("[data-focus-on-load]");
   if (problems) problems.focus();
