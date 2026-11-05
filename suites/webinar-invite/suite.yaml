@@ -1,9 +1,12 @@
 name: Webinar invite email
 description: Turns an event brief into an invite email for a Northstar webinar on Insight dashboards.
+type: gpt
 team: Marketing
 who_uses_it: The field marketing team, for invite emails to customers and prospects.
+owner_name: Marcus Lee
+owner_team: Marketing ops
+where_text: the Webinar invite writer GPT
 input_label: What a marketer would paste in (the event brief)
-in_use: v2
 model: claude-sonnet-5-5
 repeats: 1
 threshold: 0.5

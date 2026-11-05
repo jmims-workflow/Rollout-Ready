@@ -171,12 +171,12 @@ def test_webinar_v1_to_v2_no_clear_difference(demo_store):
     assert misses(comp) == {}
 
 
-def test_webinar_v2_to_v3_keep_current_with_missed_deal_breaker(demo_store):
+def test_webinar_v2_to_v3_not_ready_with_missed_deal_breaker(demo_store):
     comp = build_comparison(demo_store, "webinar-invite", "v2", "v3", live=False)
     assert rows(comp) == WEBINAR_V2_V3
     assert (comp.worse, comp.better, comp.same) == (2, 1, 3)
     assert (fmt(comp.avg_current), fmt(comp.avg_new)) == ("3.9", "3.9")
-    assert comp.verdict == "Keep the current version"
+    assert comp.verdict == "Not ready to roll out"
     assert misses(comp) == {"two-sessions-two-zones": ["Event details are right"]}
     assert comp.deal_breaker_callout.startswith('Missed a deal-breaker: "Event details are right" on 1 example.')
 
@@ -208,7 +208,7 @@ def test_webinar_outputs_really_pass_every_check(demo_store):
     ("followup-email", "v2", "v4", "Ready to roll out", (0, 4, 4)),
     ("partner-outreach", "v1", "v2", "Ready to roll out", (0, 3, 3)),
     ("webinar-invite", "v1", "v2", "No clear difference", (0, 0, 6)),
-    ("webinar-invite", "v2", "v3", "Keep the current version", (2, 1, 3)),
+    ("webinar-invite", "v2", "v3", "Not ready to roll out", (2, 1, 3)),
 ])
 def test_every_demo_comparison(demo_store, suite, current, new, verdict, counts):
     comp = build_comparison(demo_store, suite, current, new, live=False)
@@ -218,11 +218,12 @@ def test_every_demo_comparison(demo_store, suite, current, new, verdict, counts)
         assert (comp.worse, comp.better, comp.same) == counts
 
 
-def test_all_four_verdicts_reachable_in_demo(demo_store):
+def test_three_verdicts_reachable_in_demo(demo_store):
+    # Needs review arrives in demo data with partner outreach version 3 (PR 2).
     pairs = [("followup-email", "v2", "v4"), ("followup-email", "v2", "v3"),
              ("webinar-invite", "v1", "v2"), ("webinar-invite", "v2", "v3")]
     verdicts = {build_comparison(demo_store, *p, live=False).verdict for p in pairs}
-    assert verdicts == {"Ready to roll out", "Not ready to roll out", "No clear difference", "Keep the current version"}
+    assert verdicts == {"Ready to roll out", "Not ready to roll out", "No clear difference"}
 
 
 def test_demo_prompts_have_teams_and_a_mix(demo_store):

@@ -1,0 +1,23 @@
+[
+  {
+    "id": "shipped-webinar-1",
+    "type": "baseline",
+    "to_version": "v1",
+    "timestamp": "2026-09-22T15:00:00Z",
+    "confirmed_by": "Marcus Lee",
+    "evaluation_id": "recorded-v1-v1",
+    "evaluation_source": "recorded"
+  },
+  {
+    "id": "shipped-webinar-2",
+    "type": "exception",
+    "from_version": "v1",
+    "to_version": "v2",
+    "timestamp": "2026-10-14T16:00:00Z",
+    "confirmed_by": "Marcus Lee",
+    "evaluation_id": "recorded-v1-v2",
+    "evaluation_source": "recorded",
+    "verdict": "No clear difference",
+    "reason": "Adds a subject line so invites can go straight into the email tool. Scores held steady."
+  }
+]

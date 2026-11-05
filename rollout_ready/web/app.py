@@ -11,7 +11,7 @@ import os
 import re
 import secrets
 import time
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Callable
 from urllib.parse import urlencode
@@ -23,15 +23,16 @@ from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 from starlette.middleware.sessions import SessionMiddleware
 
-from .. import config, public, scoring
-from ..compare import (MIX_NUDGE, Comparison, build_comparison, example_mix, load_results,
-                       missing_cases, needs_harder_examples, summary_text)
+from .. import config, demo_session, evaluate, public, releases, scoring
+from ..compare import (MIX_NUDGE, Comparison, build_comparison, comparison_for_record, example_mix,
+                       load_results, needs_harder_examples, summary_text)
 from ..config import Settings, length_problem, load_settings
 from ..demo_criteria import SAMPLE_CRITERIA, SAMPLE_SUITE_NAME, SAMPLE_WHO
 from ..judge import draft_criteria
-from ..models import CASE_KINDS, Case, Check, Criterion, Override, Suite, Version
+from ..evidence import OverrideEvent
+from ..models import CASE_KINDS, Case, Check, Criterion, Suite, Version
 from ..provider import ClaudeProvider, Provider, ProviderError
-from ..runner import Job, JobManager, estimate_sentence, pending_for, run_versions
+from ..runner import Job, JobManager, change_test_estimate, estimate_sentence, pending_for, run_versions
 from ..public import SessionStore, Sessions, SharedResults, Usage
 from ..storage import Store, SuiteError, slugify
 
@@ -49,7 +50,8 @@ VERDICT_PHRASES = {
     scoring.READY: "is ready to roll out",
     scoring.NO_DIFFERENCE: "made no clear difference",
     scoring.NOT_READY: "is not ready to roll out",
-    scoring.KEEP_CURRENT: "is not ready, so keep the version your team uses now",
+    scoring.NEEDS_REVIEW: "needs review before it rolls out",
+    scoring.INCOMPLETE: "has an incomplete test",
 }
 
 
@@ -61,6 +63,14 @@ def _when(stamp: str) -> str:
     except ValueError:
         return stamp
     return dt.strftime("%B %-d, %Y at %H:%M UTC")
+
+
+def _day(stamp: str) -> str:
+    """'2026-10-02T16:00:00Z' becomes 'October 2, 2026'."""
+    try:
+        return datetime.strptime(stamp[:10], "%Y-%m-%d").strftime("%B %-d, %Y")
+    except ValueError:
+        return stamp or "Not recorded"
 
 
 def _vname(version_id: str) -> str:
@@ -98,7 +108,11 @@ def create_app(
     templates = Jinja2Templates(directory=HERE / "templates")
     templates.env.globals.update(
         settings=settings, fmt=scoring.fmt, fmt_change=scoring.fmt_change,
-        fmt_crit=scoring.fmt_criterion, when=_when, vname=_vname, plural=_plural,
+        fmt_crit=scoring.fmt_criterion, when=_when, day=_day, vname=_vname, plural=_plural,
+        in_use_help=releases.IN_USE_HELP, names_help=releases.NAMES_HELP, recorded_note=releases.RECORDED_NOTE,
+        public_release_note=("Only you can see this. It lasts 24 hours or until you close this browser, "
+                             "whichever comes first. Putting a version into use doesn't use any of your live tests."),
+        demo_release_note="In this demo, your changes last until you close this browser.",
         result_labels=scoring.RESULT_LABELS, kinds=CASE_KINDS, calls=CALLS,
         mix_nudge=MIX_NUDGE, cutoff=scoring.DEAL_BREAKER_CUTOFF,
         private_note=public.PRIVATE_NOTE, used_up_note=public.USED_UP, honeypot_name=public.HONEYPOT,
@@ -163,95 +177,92 @@ def create_app(
     def start_job(request: Request, title: str, done_url: str, work) -> Job:
         return jobs.start(title, done_url, work, owner=session_id(request))
 
-    def in_use(suite: Suite, versions) -> str:
-        ids = [v.id for v in versions]
-        return suite.in_use if suite.in_use in ids else (ids[-1] if ids else "")
+    # release history: shipped events, then live files or the demo cookie ---------
+    def release_log(request: Request, suite_id: str) -> releases.ReleaseLog:
+        if settings.is_live:
+            return releases.StoreLog(store_for(request), suite_id)
+        return releases.ListLog(demo_session.releases(request.session, suite_id))
+
+    def release_history(request: Request, suite_id: str) -> list[releases.ReleaseEvent]:
+        return releases.history(store_for(request), suite_id, release_log(request, suite_id))
+
+    def in_use(request: Request, suite: Suite, versions) -> str:
+        """The version in the latest release event (derived, never stored)."""
+        return releases.in_use(release_history(request, suite.id), [v.id for v in versions], suite.in_use)
 
     def ordered(suites: list[Suite]) -> list[Suite]:
         """The featured prompt first, then by team and name."""
         return sorted(suites, key=lambda s: (s.id != config.FEATURED_SUITE, s.team.lower() or "~", s.name.lower()))
 
-    def default_pair(suite: Suite, versions: list[Version]) -> tuple[str, str] | None:
+    def default_pair(request: Request, suite: Suite, versions: list[Version]) -> tuple[str, str] | None:
         vids = [v.id for v in versions]
         if not vids:
             return None
         if suite.id == config.FEATURED_SUITE and {config.FEATURED_CURRENT, config.FEATURED_NEW} <= set(vids):
             return config.FEATURED_CURRENT, config.FEATURED_NEW
-        current = in_use(suite, versions)
+        current = in_use(request, suite, versions)
         if current == vids[-1] and len(vids) > 1:
             current = vids[-2]
         later = [v for v in vids if int(v[1:]) > int(current[1:])]
         return current, (later[-1] if later else vids[-1])
 
-    def latest_pair(st: Store, suites: list[Suite]) -> tuple[str, str, str] | None:
+    def latest_pair(request: Request, st: Store, suites: list[Suite]) -> tuple[str, str, str] | None:
         """The result the start screen and See results open on.
 
         Demo mode, and public live mode, show the featured comparison. Local live
-        mode picks the prompt whose newest version ran most recently.
+        mode shows the most recent saved test, whichever pair it compared.
         """
         ids = [s.id for s in suites]
         if (not settings.is_live or settings.is_public) and config.FEATURED_SUITE in ids:
             suite = next(s for s in suites if s.id == config.FEATURED_SUITE)
-            pair = default_pair(suite, st.versions(suite.id))
+            pair = default_pair(request, suite, st.versions(suite.id))
             if pair:
                 return (suite.id, *pair)
-        best = None
+        if settings.is_live:
+            newest = None
+            for s in suites:
+                for rid in st.evaluation_ids(s.id):
+                    rec = st.load_evaluation(s.id, rid)
+                    if rec and rec.kind == "comparison" and (newest is None or rid > newest[0]):
+                        newest = (rid, s.id, rec.baseline.id, rec.candidate.id)
+            if newest:
+                return newest[1:]
         for s in suites:
-            pair = default_pair(s, st.versions(s.id))
-            if not pair or pair[0] == pair[1]:
-                continue
-            ran = load_results(st, s.id, pair[1], settings.is_live).ran_at
-            if best is None or ran > best[0]:
-                best = (ran, s.id, *pair)
-        return best[1:] if best else None
+            pair = default_pair(request, s, st.versions(s.id))
+            if pair and pair[0] != pair[1]:
+                return (s.id, *pair)
+        return None
 
-    # overrides: files in live mode, a signed session cookie in demo mode -----
-    def _cookie_key(suite_id: str, current: str, new: str) -> str:
-        return f"{suite_id}|{current}|{new}"
-
-    def get_overrides(request: Request, suite_id: str, current: str, new: str) -> dict[str, Override]:
+    # overrides: append-only events keyed by the evidence's fingerprint and example.
+    # Live: files (private to the session in public mode). Demo: the signed session cookie,
+    # so nothing is written to disk. -----------------------------------------------------
+    def override_events(request: Request, suite_id: str) -> list[OverrideEvent]:
         if settings.is_live:
-            return store_for(request).load_overrides(suite_id, current, new)
-        raw = request.session.get("overrides", {}).get(_cookie_key(suite_id, current, new), {})
-        out = {}
-        for cid, data in raw.items():
-            try:
-                out[cid] = Override.model_validate(data)
-            except ValidationError:
-                continue
-        return out
+            return store_for(request).override_events(suite_id)
+        return demo_session.overrides(request.session, suite_id)
 
-    def put_override(request: Request, suite_id: str, current: str, new: str, case_id: str, o: Override | None):
+    def add_override_event(request: Request, suite_id: str, event: OverrideEvent) -> None:
         if settings.is_live:
-            st = store_for(request)
-            if o:
-                st.save_override(suite_id, current, new, case_id, o)
-            else:
-                st.remove_override(suite_id, current, new, case_id)
+            store_for(request).append_override_event(suite_id, event)
             return
-        all_o = dict(request.session.get("overrides", {}))
-        pair = dict(all_o.get(_cookie_key(suite_id, current, new), {}))
-        if o:
-            pair[case_id] = o.model_dump()
-        else:
-            pair.pop(case_id, None)
-        if pair:
-            all_o[_cookie_key(suite_id, current, new)] = pair
-        else:
-            all_o.pop(_cookie_key(suite_id, current, new), None)
-        request.session["overrides"] = all_o
+        demo_session.add_override(request.session, suite_id, event)  # CookieFull if there's no room
+
+    def with_overrides(request: Request, comp: Comparison) -> Comparison:
+        if comp.record is None or comp.current.id == comp.new.id:
+            return comp
+        active = evaluate.active_override_events(override_events(request, comp.suite.id), comp.record.fingerprint)
+        return comp.apply_overrides(evaluate.as_overrides(active))
 
     def comparison(request: Request, suite_id: str, current: str, new: str) -> Comparison:
         st = store_for(request)
-        overrides = get_overrides(request, suite_id, current, new) if current != new else {}
-        comp = build_comparison(st, suite_id, current, new, settings.is_live, overrides)
+        comp = build_comparison(st, suite_id, current, new, settings.is_live, reviewer_model=settings.judge_model)
         if settings.is_public and not comp.complete:
             # Public visitors still see the demo's sample comparisons. A comparison is all
             # real results or all sample results, never a mix.
-            sample = build_comparison(st, suite_id, current, new, False, overrides)
+            sample = build_comparison(st, suite_id, current, new, False)
             if sample.complete:
-                return sample
-        return comp
+                return with_overrides(request, sample)
+        return with_overrides(request, comp)
 
     def results_url(suite_id: str, current: str, new: str, **extra) -> str:
         return "/results?" + urlencode({"suite": suite_id, "current": current, "new": new, **extra})
@@ -274,7 +285,7 @@ def create_app(
         except SuiteError as exc:
             return problem(request, str(exc), status=500)
         latest, banner = None, ""
-        pick = latest_pair(st, suites)
+        pick = latest_pair(request, st, suites)
         if pick:
             try:
                 comp = comparison(request, *pick)
@@ -288,9 +299,10 @@ def create_app(
                     banner += f" It broke {_plural(comp.worse, 'example')}."
         saved = 0
         for s in suites:
+            real = evaluate.versions_with_results(st, s.id) if settings.is_live else set()
             for v in st.versions(s.id):
-                if (load_results(st, s.id, v.id, settings.is_live).cases
-                        or settings.is_public and load_results(st, s.id, v.id, False).cases):
+                if (v.id in real or (not settings.is_live or settings.is_public)
+                        and load_results(st, s.id, v.id, False).cases):
                     saved += 1
         teams = [s.team.lower() for s in suites if s.team]
         prompts_meta = _plural(len(suites), "prompt") + (": " + ", ".join(dict.fromkeys(teams)) if teams else "")
@@ -301,6 +313,10 @@ def create_app(
     @app.get("/results", response_class=HTMLResponse)
     def results(request: Request, suite: str = "", current: str = "", new: str = "", tab: str = "examples",
                 example: str = ""):
+        return results_view(request, suite, current, new, tab, example == "1")
+
+    def results_view(request: Request, suite: str, current: str, new: str, tab: str = "examples",
+                     example: bool = False, status: int = 200, **extra):
         st = store_for(request)
         suites = ordered(st.suites())
         if not suites:
@@ -308,7 +324,7 @@ def create_app(
                            back_url="/prompts/new", back_text="Add a new prompt")
         ids = [s.id for s in suites]
         if suite not in ids:
-            pick = latest_pair(st, suites)
+            pick = latest_pair(request, st, suites)
             suite = pick[0] if pick else ids[0]
             if pick and not current and not new:
                 current, new = pick[1], pick[2]
@@ -317,7 +333,7 @@ def create_app(
         vids = [v.id for v in versions]
         if not vids:
             return problem(request, "This prompt has no versions yet.", status=404)
-        pair = default_pair(the_suite, versions)
+        pair = default_pair(request, the_suite, versions)
         if current not in vids:
             current = pair[0]
         if new not in vids:
@@ -326,7 +342,7 @@ def create_app(
         tab = OLD_TABS.get(tab, tab)
         tab = tab if tab in TABS else "examples"
         ctx = dict(nav="results", suites=suites, suite=the_suite, versions=versions,
-                   current_id=current, new_id=new, tab=tab, example=example == "1",
+                   current_id=current, new_id=new, tab=tab, example=example,
                    base_q=results_url(suite, current, new), comp=None, error=None)
         if current == new:
             return page(request, "compare.html", **ctx)
@@ -341,7 +357,148 @@ def create_app(
             ctx["summary"] = summary_text(comp)
         else:
             ctx["estimate"] = estimate_sentence(sum(len(v) for v in comp.missing.values()), the_suite.repeats)
-        return page(request, "compare.html", **ctx)
+        ctx.update(decision_ctx(request, st, the_suite, versions, comp))
+        ctx.update(extra)
+        return page(request, "compare.html", status=status, **ctx)
+
+    # deciding: notices and the decision block on the results page -----------------
+    def decision_ctx(request: Request, st: Store, suite: Suite, versions: list[Version], comp: Comparison) -> dict:
+        """What the results page shows about rolling out. Every check runs again on submit (releases.py)."""
+        use = in_use(request, suite, versions)
+        number = {v.id: v.number for v in versions}
+        rec = comp.record
+        live_record = rec is not None and rec.source == "live"
+        others = evaluate.records_for_pair(st, suite.id, comp.current.id, comp.new.id) if live_record else []
+        stale = live_record and not comp.saved and any(r.final for r in others)
+        separate = live_record and not comp.saved and comp.complete and not others
+        relied_on = rec is not None and (comp.saved or rec.source == "recorded")
+        changed = comp.complete and rec is not None and comp.current.id != use and comp.new.id != use
+        can_decide = (comp.complete and relied_on and not stale and rec.kind == "comparison"
+                      and comp.new.id != use)
+        kind = None
+        if can_decide:
+            kind = "rollout" if comp.verdict == scoring.READY and not changed else "exception"
+        items = rec.items if rec is not None else []
+        return dict(
+            in_use_id=use, in_use_number=number.get(use, 0), stale=stale, separate=separate, changed=changed,
+            interrupted=comp.status == "interrupted",
+            finished_items=sum(i.status == "complete" for i in items), total_items=len(items),
+            cut_off=sum(i.status == "cut_off" for i in items),
+            saved_incomplete=live_record and comp.saved and comp.status == "incomplete",
+            decide_kind=kind, token=releases.new_token(),
+            miss_rows=[r for r in comp.rows if r.blocking_misses],
+            new_is_in_use=comp.new.id == use,
+        )
+
+    def evaluation_comparison(request: Request, suite_id: str, evaluation_id: str) -> Comparison | None:
+        """The evaluation a decision relies on, rebuilt now with the overrides in force."""
+        st = store_for(request)
+        pair = evaluate.parse_recorded_id(evaluation_id)
+        if pair:
+            comp = build_comparison(st, suite_id, *pair, live=False)
+        else:
+            comp = comparison_for_record(st, suite_id, evaluation_id)
+        return with_overrides(request, comp) if comp is not None else None
+
+    def record_decision(request: Request, suite_id: str, decision: releases.Decision, comp: Comparison | None):
+        """Check and record a decision. Demo events go in the cookie, within its budget."""
+        st = store_for(request)
+        log = release_log(request, suite_id)
+        active = []
+        if comp is not None and comp.record is not None:
+            active = list(evaluate.active_override_events(override_events(request, suite_id),
+                                                          comp.record.fingerprint).values())
+        if settings.is_public:
+            decision.confirmed_by = "you"
+        event, found, created = releases.decide(st, suite_id, decision, log, comp, [o.id for o in active])
+        if created and not settings.is_live:
+            for e in log.added:  # CookieFull if there's no room: nothing is saved
+                demo_session.add_release(request.session, suite_id, e)
+        return event, found
+
+    def _decision(form, kind: str) -> releases.Decision:
+        return releases.Decision(
+            kind=kind, version_id=str(form.get("version", "")), token=str(form.get("token", "")),
+            confirmed_by=" ".join(str(form.get("name", "")).split()), reason=str(form.get("reason", "")),
+            baseline_ack=bool(form.get("baseline_ack")), deal_breaker_ack=bool(form.get("deal_breaker_ack")))
+
+    @app.post("/prompts/{suite_id}/release")
+    async def release(request: Request, suite_id: str):
+        form = await request.form()
+        kind = str(form.get("kind", ""))
+        if kind not in ("rollout", "exception"):
+            return problem(request, "Choose how to put this version into use.", status=400)
+        try:
+            comp = evaluation_comparison(request, suite_id, str(form.get("evaluation", "")))
+        except SuiteError as exc:
+            return problem(request, str(exc), status=404, heading="Not found")
+        if comp is None:
+            return problem(request, "That test couldn't be found. Open the result again.", status=404,
+                           heading="Not found")
+        decision = _decision(form, kind)
+        event, found = record_decision(request, suite_id, decision, comp)
+        if event is None:
+            return results_view(request, suite_id, comp.current.id, comp.new.id, status=400,
+                                decision_errors=found, decision_form=dict(form))
+        return RedirectResponse(f"/prompts/{suite_id}/releases/{event.id}", status_code=303)
+
+    @app.post("/prompts/{suite_id}/return")
+    async def put_back(request: Request, suite_id: str):
+        form = await request.form()
+        try:
+            store_for(request).load_suite(suite_id)
+        except SuiteError as exc:
+            return problem(request, str(exc), status=404, heading="Not found")
+        decision = _decision(form, "return")
+        event, found = record_decision(request, suite_id, decision, None)
+        if event is None:
+            return suite_view(request, suite_id, status=400, return_errors=found, return_form=dict(form),
+                              put_back=decision.version_id)
+        return RedirectResponse(f"/prompts/{suite_id}/releases/{event.id}", status_code=303)
+
+    @app.get("/prompts/{suite_id}/releases/{event_id}", response_class=HTMLResponse)
+    def release_record(request: Request, suite_id: str, event_id: str):
+        st = store_for(request)
+        try:
+            suite = st.load_suite(suite_id)
+            events = release_history(request, suite_id)
+        except SuiteError as exc:
+            return problem(request, str(exc), status=404, heading="Not found")
+        event = next((e for e in events if e.id == event_id), None)
+        if event is None:
+            return problem(request, "There's no record of that change.", status=404, heading="Not found")
+        versions = st.versions(suite_id)
+        use = in_use(request, suite, versions)
+        based_on = None
+        if event.evaluation_id:
+            try:
+                comp = evaluation_comparison(request, suite_id, event.evaluation_id)
+            except SuiteError:
+                comp = None
+            if comp is not None:
+                url = (results_url(suite_id, comp.current.id, comp.new.id) if event.evaluation_source == "recorded"
+                       else f"/prompts/{suite_id}/tests/{event.evaluation_id}")
+                based_on = dict(comp=comp, url=url)
+        overrides = []
+        if event.override_ids:
+            by_id = {o.id[:8]: o for o in override_events(request, suite_id)}
+            overrides = [by_id[i[:8]] for i in event.override_ids if i[:8] in by_id]
+        names = {c.id: c.name for c in st.load_cases(suite_id)}
+        from_status = releases.status(event.from_version, events, use) if event.from_version else ""
+        return page(request, "release.html", nav="prompts", suite=suite, event=event, based_on=based_on,
+                    overrides=overrides, case_names=names, from_status=from_status,
+                    from_text=next((v.text for v in versions if v.id == event.from_version), ""))
+
+    @app.get("/prompts/{suite_id}/tests/{evaluation_id}", response_class=HTMLResponse)
+    def saved_test(request: Request, suite_id: str, evaluation_id: str):
+        """One saved test, showing its own evidence."""
+        try:
+            comp = evaluation_comparison(request, suite_id, evaluation_id)
+        except SuiteError:
+            comp = None
+        if comp is None:
+            return problem(request, "That test couldn't be found.", status=404, heading="Not found")
+        return results_view(request, suite_id, comp.current.id, comp.new.id)
 
     @app.get("/summary.txt")
     def summary(request: Request, suite: str, current: str, new: str):
@@ -371,7 +528,8 @@ def create_app(
 
     @app.get("/prompts/{suite_id}/examples/{case_id}", response_class=HTMLResponse)
     def case_detail(request: Request, suite_id: str, case_id: str, current: str = "", new: str = "", saved: str = ""):
-        message = {"1": "Saved. This example now counts the way you said, for these two versions only.",
+        message = {"1": "Saved. This example now counts the way you said, for these results only. "
+                        "If the examples or what good looks like change, you'll decide again.",
                    "removed": "Removed. This example counts the way the AI reviewer scored it again."}.get(saved)
         return example_page(request, suite_id, case_id, current, new, message=message)
 
@@ -407,8 +565,8 @@ def create_app(
         if error:
             return example_page(request, suite_id, case_id, current, new, status=400, form_error=error,
                                 form={"call": call, "reason": reason, "count_as": count_as})
-        put_override(request, suite_id, current, new, case_id,
-                     Override(call=call, result=result, reason=reason, created=date.today().isoformat()))
+        add_override_event(request, suite_id, evaluate.override_event(
+            comp.record.fingerprint, comp.record.id, case_id, call=call, result=result, reason=reason))
         return RedirectResponse(example_url(suite_id, case_id, current, new, saved="1") + "#your-call",
                                 status_code=303)
 
@@ -416,12 +574,14 @@ def create_app(
     async def remove_override(request: Request, suite_id: str, case_id: str):
         form = await request.form()
         current, new = str(form.get("current", "")), str(form.get("new", ""))
-        st = store_for(request)
         try:
-            st.load_version(suite_id, current), st.load_version(suite_id, new)
+            comp = comparison(request, suite_id, current, new)
         except SuiteError as exc:
             return problem(request, str(exc), status=404, heading="Not found")
-        put_override(request, suite_id, current, new, case_id, None)
+        row = comp.row(case_id)
+        if row is not None and row.override is not None:  # removing appends an event; nothing is deleted
+            add_override_event(request, suite_id, evaluate.override_event(
+                comp.record.fingerprint, comp.record.id, case_id, remove=True))
         return RedirectResponse(example_url(suite_id, case_id, current, new, saved="removed") + "#your-call",
                                 status_code=303)
 
@@ -432,7 +592,7 @@ def create_app(
         The version you're trying runs every example. The version you compare with runs any
         example it has no real results for, which is all of them when it has only sample results.
         """
-        against_todo = len(missing_cases(st, suite, cases, against, live=True))
+        against_todo, _calls = change_test_estimate(st, suite.id, against, settings.judge_model)
         return against_todo, estimate_sentence(len(cases) + against_todo, suite.repeats)
 
     def test_context(request: Request, suite_id: str, against: str) -> dict:
@@ -444,7 +604,7 @@ def create_app(
         suite_id = suite_id if suite_id in ids else (config.FEATURED_SUITE if config.FEATURED_SUITE in ids else ids[0])
         suite = next(s for s in suites if s.id == suite_id)
         versions = st.versions(suite_id)
-        use = in_use(suite, versions)
+        use = in_use(request, suite, versions)
         against_v = next((v for v in versions if v.id == against), None) or next(v for v in versions if v.id == use)
         cases = st.load_cases(suite_id)
         ctx = dict(nav="test", suites=suites if settings.is_live else [suite], suite=suite,
@@ -519,11 +679,17 @@ def create_app(
         try:
             st.load_version(suite_id, current), st.load_version(suite_id, new)
             err = too_many_examples(st.load_cases(suite_id))
-            nothing_to_run = not pending_for(st, suite_id, [current, new])
+            nothing_to_run = not pending_for(st, suite_id, [current, new], settings.judge_model)
         except SuiteError as exc:
             return problem(request, str(exc), status=404)
         done = results_url(suite_id, current, new)
-        if is_spam(form) or nothing_to_run:
+        if is_spam(form):
+            return RedirectResponse(done, status_code=303)
+        if nothing_to_run:
+            # Every answer and review is saved already (for example, only a quick check changed, or the
+            # two versions ran in separate tests). Saving a record for this pair makes no calls, so it
+            # runs straight away and uses none of a visitor's live tests.
+            evaluate.run_evaluation(st, suite_id, current, new, make_provider(), settings.judge_model)
             return RedirectResponse(done, status_code=303)
         if err:
             return problem(request, err, back_url=done, back_text="Back to the results")
@@ -703,24 +869,53 @@ def create_app(
             taken.add(cid)
             new_cases.append(Case(id=cid, name=name, label=label, kind=kind, input=text))
         suite_id = st.create_suite(suite, new_cases, f["prompt_text"].strip(), note="The prompt the team uses today.")
+        # Version 1 is recorded as in use by the owner. In public mode the name is "you".
+        releases.StoreLog(st, suite_id).append(releases.baseline_event("v1", "you" if settings.is_public else ""))
         job = start_job(request, "Scoring version 1 to set the starting point", f"/prompts/{suite_id}?created=1",
                         run_versions(st, suite_id, ["v1"], make_provider(), settings.judge_model))
         return RedirectResponse(f"/jobs/{job.id}", status_code=303)
 
     @app.get("/prompts/{suite_id}", response_class=HTMLResponse)
-    def suite_page(request: Request, suite_id: str, created: str = "", saved: str = ""):
+    def suite_page(request: Request, suite_id: str, created: str = "", saved: str = "", put_back: str = ""):
+        message = ("Saved. Version 1 is scored, so every version you try is compared with it." if created
+                   else "Saved." if saved else None)
+        return suite_view(request, suite_id, message=message, put_back=put_back)
+
+    def last_test(request: Request, st: Store, suite_id: str, version_id: str) -> tuple[str, str] | None:
+        """(the version it was compared with, the date) for this version's latest complete test."""
+        best = None
+        if settings.is_live:
+            for rid in reversed(st.evaluation_ids(suite_id)):
+                rec = st.load_evaluation(suite_id, rid)
+                if rec and rec.candidate.id == version_id and rec.status == "complete":
+                    best = (rec.baseline.id, rec.finished)
+                    break
+        if best is None:
+            for e in reversed(release_history(request, suite_id)):
+                pair = evaluate.parse_recorded_id(e.evaluation_id)
+                if e.to_version == version_id and pair:
+                    rec = evaluate.recorded_evidence(st, suite_id, *pair).record
+                    best = (rec.baseline.id, rec.finished)
+                    break
+        return best
+
+    def suite_view(request: Request, suite_id: str, status: int = 200, message: str | None = None,
+                   put_back: str = "", **extra):
         st = store_for(request)
         try:
             suite = st.load_suite(suite_id)
             versions, cases = st.versions(suite_id), st.load_cases(suite_id)
+            events = release_history(request, suite_id)
         except SuiteError as exc:
             return problem(request, str(exc), status=404, heading="Not found")
-        message = ("Saved. Version 1 is scored, so every version you try is compared with it." if created
-                   else "Saved." if saved else None)
-        return page(request, "suite.html", nav="prompts", suite=suite, versions=versions, cases=cases,
-                    in_use=in_use(suite, versions), message=message, error=None,
-                    nudge=needs_harder_examples(cases), mix=example_mix(cases),
-                    next_url=f"/prompts/{suite_id}?saved=1#add-example")
+        use = in_use(request, suite, versions)
+        statuses = {v.id: releases.status(v.id, events, use) for v in versions}
+        tested = {v.id: last_test(request, st, suite_id, v.id) for v in versions if statuses[v.id] == "Retired"}
+        return page(request, "suite.html", status=status, nav="prompts", suite=suite, versions=versions,
+                    cases=cases, in_use=use, statuses=statuses, since=releases.since(events, use),
+                    tested=tested, events=list(reversed(events)), put_back=put_back, token=releases.new_token(),
+                    message=message, error=None, nudge=needs_harder_examples(cases), mix=example_mix(cases),
+                    next_url=f"/prompts/{suite_id}?saved=1#add-example", **extra)
 
     def _kind(value: str) -> str:
         return value if value in CASE_KINDS else "everyday"
@@ -763,14 +958,10 @@ def create_app(
             suite = st.load_suite(suite_id)
             cases = st.load_cases(suite_id)
             against = str(form.get("against", ""))
-            if against:
-                try:
-                    st.load_version(suite_id, against)
-                    estimate = test_estimate(st, suite, cases, against)[1]
-                except SuiteError:
-                    estimate = estimate_sentence(len(cases), suite.repeats)
-            else:
-                estimate = estimate_sentence(len(cases), suite.repeats)
+            if against not in {v.id for v in st.versions(suite_id)}:
+                # Count the version in use too, so the estimate never comes in low.
+                against = in_use(request, suite, st.versions(suite_id))
+            estimate = test_estimate(st, suite, cases, against)[1]
             return {"ok": True, "case": case.model_dump(), "kind_label": case.kind_label, "count": len(cases),
                     "estimate": estimate,
                     "nudge": needs_harder_examples(cases)}
@@ -808,6 +999,18 @@ def create_app(
         rest = re.sub(r"^([^/]+)/cases/", r"\1/examples/", rest)
         query = f"?{request.query_params}" if request.query_params else ""
         return RedirectResponse(f"/prompts/{rest}{query}", status_code=301)
+
+    # demo mode: the cookie that holds a visitor's changes is full ----------------------
+    @app.exception_handler(demo_session.CookieFull)
+    async def cookie_full(request: Request, exc: demo_session.CookieFull):
+        return problem(request, str(exc), status=409, heading="No room for more changes", info=True,
+                       start_over=True)
+
+    @app.post("/demo/start-over")
+    async def start_over(request: Request):
+        """Clear this visit's demo changes: overrides and releases. Nothing on disk is touched."""
+        demo_session.start_over(request.session)
+        return RedirectResponse("/", status_code=303)
 
     @app.get("/healthz")
     def health() -> Response:

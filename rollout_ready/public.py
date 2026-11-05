@@ -1,14 +1,16 @@
 """Public live mode (ROLLOUT_PUBLIC=true): private visitor folders, shared demo results, limits.
 
 data_dir/
-  sessions/<session-id>/<suite-id>/...  one visitor's prompts, versions, examples, results, overrides
-  shared/<suite-id>/<version>.json      real results for demo versions on demo examples
-  usage.json                            live runs used, per session, per address and per day
+  sessions/<session-id>/<suite-id>/...       one visitor's prompts, versions, examples, results, overrides
+  shared/<suite-id>/answers|reviews/<key>    real answers and reviews for demo versions on demo examples
+  usage.json                                 live runs used, per session, per address and per day
 
 A visitor reads the demo prompts from the suites folder. The first time they change
 one, it is copied into their own folder, so nothing a visitor writes is ever seen by
-anyone else. Real results for a demo version on an unchanged demo example contain
-nothing a visitor wrote, so they go to the shared folder and are reused by everyone.
+anyone else. A real answer for an unchanged demo version on an unchanged demo example,
+with the demo's model, contains nothing a visitor wrote, so it goes to the shared
+folder and is reused by everyone; so does its review when the qualities are the demo's
+own. Evaluation records are always private to the session.
 """
 
 from __future__ import annotations
@@ -26,8 +28,10 @@ from urllib.parse import urlparse
 from pydantic import ValidationError
 
 from .config import Limits
-from .models import CaseResult, Override, Suite, VersionResults
-from .storage import Store, SuiteError, _atomic_write, input_hash, rubric_hash
+from .evidence import AnswerBlob, EvaluationRecord, OverrideEvent, ReviewBlob, qualities_payload
+from .models import Case, VersionResults
+from .records import LocalRecordStore
+from .storage import Store, SuiteError, _atomic_write
 
 SESSION_SECONDS = 24 * 60 * 60
 SESSION_ID_RE = re.compile(r"[a-f0-9]{32}")
@@ -41,33 +45,37 @@ _lock = threading.RLock()
 
 
 class SharedResults:
-    """Real results for demo versions on demo examples, shared by every visitor."""
+    """Real answers and reviews for demo versions on demo examples, shared by every visitor.
+
+    Stored once under their reuse keys. SessionStore decides what may come here.
+    """
 
     def __init__(self, root: Path):
         self.root = Path(root)
 
-    def _path(self, suite_id: str, version_id: str) -> Path:
-        return self.root / suite_id / f"{version_id}.json"
+    def _records(self, suite_id: str) -> LocalRecordStore:
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", suite_id or ""):
+            raise SuiteError(f"There is no prompt called {suite_id!r}.")
+        return LocalRecordStore(self.root / suite_id)
 
-    def load(self, suite_id: str, version_id: str) -> VersionResults | None:
-        path = self._path(suite_id, version_id)
-        if not path.exists():
-            return None
+    def _read(self, suite_id: str, key: str, model):
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            data["source"] = "live"
-            return VersionResults.model_validate(data)
-        except (json.JSONDecodeError, ValidationError):
-            return None  # a broken cache file only means those examples run again
+            data = self._records(suite_id).read(key)
+            return model.model_validate(data) if data is not None else None
+        except (ValidationError, Exception):
+            return None  # a broken cache file only means that call runs again
 
-    def save(self, suite_id: str, results: VersionResults, entries: dict[str, CaseResult]) -> None:
-        with _lock:
-            saved = self.load(suite_id, results.version) or VersionResults(version=results.version)
-            saved.model, saved.judge_model = results.model, results.judge_model
-            saved.ran_at = max(saved.ran_at, results.ran_at)
-            saved.cases.update(entries)
-            _atomic_write(self._path(suite_id, results.version),
-                          saved.model_dump_json(indent=2, exclude={"source"}) + "\n")
+    def load_answer(self, suite_id: str, key: str) -> AnswerBlob | None:
+        return self._read(suite_id, f"answers/{key}", AnswerBlob)
+
+    def save_answer(self, suite_id: str, blob: AnswerBlob) -> None:
+        self._records(suite_id).write_once(f"answers/{blob.key}", blob.model_dump(mode="json"))
+
+    def load_review(self, suite_id: str, key: str) -> ReviewBlob | None:
+        return self._read(suite_id, f"reviews/{key}", ReviewBlob)
+
+    def save_review(self, suite_id: str, blob: ReviewBlob) -> None:
+        self._records(suite_id).write_once(f"reviews/{blob.key}", blob.model_dump(mode="json"))
 
 
 class SessionStore(Store):
@@ -95,6 +103,8 @@ class SessionStore(Store):
             shutil.copy2(src / "cases.yaml", tmp / "cases.yaml")
             shutil.copytree(src / "versions", tmp / "versions")
             shutil.copy2(src / "suite.yaml", tmp / "suite.yaml")
+            if (src / "history.json").exists():
+                shutil.copy2(src / "history.json", tmp / "history.json")
             tmp.rename(dest)
 
     # reading: the visitor's own copy first, then the demo prompts ----------
@@ -122,18 +132,21 @@ class SessionStore(Store):
         self._copy_if_demo(suite_id)
         return super().add_version(suite_id, text, note, created)
 
-    def save_override(self, suite_id: str, current: str, new: str, case_id: str, override: Override) -> None:
-        self._copy(suite_id)
-        super().save_override(suite_id, current, new, case_id, override)
+    def append_override_event(self, suite_id: str, event: OverrideEvent) -> None:
+        self._copy_if_demo(suite_id)
+        super().append_override_event(suite_id, event)
 
-    def remove_override(self, suite_id: str, current: str, new: str, case_id: str) -> None:
-        if self._own(suite_id):
-            super().remove_override(suite_id, current, new, case_id)
+    def override_events(self, suite_id: str) -> list[OverrideEvent]:
+        return super().override_events(suite_id) if self._own(suite_id) else []
 
-    def _all_overrides(self, suite_id: str) -> dict:
-        return super()._all_overrides(suite_id) if self._own(suite_id) else {}
+    def append_release_event(self, suite_id: str, event: dict) -> None:
+        self._copy_if_demo(suite_id)
+        super().append_release_event(suite_id, event)
 
-    # results ----------------------------------------------------------------
+    def release_events(self, suite_id: str) -> list[dict]:
+        return super().release_events(suite_id) if self._own(suite_id) else []
+
+    # results: answers and reviews may be shared; evaluation records never are ----
     def _demo_version(self, suite_id: str, version_id: str) -> bool:
         """True when this version is one of the demo's own, unchanged."""
         try:
@@ -141,28 +154,55 @@ class SessionStore(Store):
         except SuiteError:
             return False
 
-    def _shareable(self, suite_id: str) -> tuple[Suite, dict[str, str]] | None:
-        """The demo prompt and the input of each demo example this visitor has not changed."""
+    def _shareable_answer(self, suite_id: str, version_id: str, case: Case) -> bool:
+        """An unchanged demo version on an unchanged demo example, with the demo's model."""
+        if suite_id not in self.base.suite_ids() or not self._demo_version(suite_id, version_id):
+            return False
         try:
-            base_suite = self.base.load_suite(suite_id)
-            if rubric_hash(base_suite) != rubric_hash(self.load_suite(suite_id)):
-                return None
-            mine = {c.id: input_hash(c) for c in self.load_cases(suite_id)}
-            demo = {c.id: input_hash(c) for c in self.base.load_cases(suite_id)}
+            demo_case = next((c for c in self.base.load_cases(suite_id) if c.id == case.id), None)
+            same_model = self.base.load_suite(suite_id).model == self.load_suite(suite_id).model
         except SuiteError:
-            return None
-        return base_suite, {cid: h for cid, h in demo.items() if mine.get(cid) == h}
+            return False
+        return demo_case is not None and demo_case.input == case.input and same_model
 
-    def _shared_entries(self, suite_id: str, version_id: str, entries: dict[str, CaseResult]) -> dict[str, CaseResult]:
-        if not entries or not self._demo_version(suite_id, version_id):
-            return {}
-        found = self._shareable(suite_id)
-        if not found:
-            return {}
-        suite, inputs = found
-        return {cid: e for cid, e in entries.items()
-                if cid in inputs and e.input_hash == inputs[cid]
-                and e.rubric_hash == rubric_hash(suite) and e.model == suite.model}
+    def _shareable_review(self, suite_id: str, version_id: str, case: Case) -> bool:
+        """A shareable answer, reviewed against the demo's own qualities."""
+        if not self._shareable_answer(suite_id, version_id, case):
+            return False
+        try:
+            return qualities_payload(self.base.load_suite(suite_id).rubric) == \
+                qualities_payload(self.load_suite(suite_id).rubric)
+        except SuiteError:
+            return False
+
+    def load_answer(self, suite_id: str, key: str) -> AnswerBlob | None:
+        own = super().load_answer(suite_id, key) if (self.root / suite_id).exists() else None
+        return own or self.shared.load_answer(suite_id, key)
+
+    def save_answer(self, suite_id: str, blob: AnswerBlob, *, version_id: str, case: Case) -> None:
+        if self._shareable_answer(suite_id, version_id, case):
+            self.shared.save_answer(suite_id, blob)
+            return
+        self._copy_if_demo(suite_id)
+        super().save_answer(suite_id, blob, version_id=version_id, case=case)
+
+    def load_review(self, suite_id: str, key: str) -> ReviewBlob | None:
+        own = super().load_review(suite_id, key) if (self.root / suite_id).exists() else None
+        return own or self.shared.load_review(suite_id, key)
+
+    def save_review(self, suite_id: str, blob: ReviewBlob, *, version_id: str, case: Case) -> None:
+        if self._shareable_review(suite_id, version_id, case):
+            self.shared.save_review(suite_id, blob)
+            return
+        self._copy_if_demo(suite_id)
+        super().save_review(suite_id, blob, version_id=version_id, case=case)
+
+    def evaluation_ids(self, suite_id: str) -> list[str]:
+        return super().evaluation_ids(suite_id) if self._own(suite_id) else []
+
+    def save_evaluation(self, record: EvaluationRecord) -> None:
+        self._copy_if_demo(record.suite_id)
+        super().save_evaluation(record)
 
     def load_recorded(self, suite_id: str, version_id: str) -> VersionResults | None:
         if not self._demo_version(suite_id, version_id):
@@ -170,29 +210,8 @@ class SessionStore(Store):
         return self.base.load_recorded(suite_id, version_id)
 
     def load_runs(self, suite_id: str, version_id: str) -> VersionResults | None:
-        # Never read runs/ in the demo folder itself: those belong to whoever ran the app locally.
-        own = super().load_runs(suite_id, version_id) if self._own(suite_id) else None
-        shared = self.shared.load(suite_id, version_id)
-        common = self._shared_entries(suite_id, version_id, shared.cases) if shared else {}
-        if own is None and not common:
-            return None
-        out = own or VersionResults(version=version_id, source="live")
-        if common:
-            out.cases.update(common)
-            out.model = out.model or shared.model
-            out.judge_model = out.judge_model or shared.judge_model
-            out.ran_at = max(out.ran_at, shared.ran_at)
-        return out
-
-    def save_runs(self, suite_id: str, results: VersionResults) -> None:
-        common = self._shared_entries(suite_id, results.version, results.cases)
-        if common:
-            self.shared.save(suite_id, results, common)
-        private = {cid: e for cid, e in results.cases.items() if cid not in common}
-        if not private and not self._own(suite_id):
-            return
-        self._copy_if_demo(suite_id)
-        super().save_runs(suite_id, results.model_copy(update={"cases": private}))
+        # Older results only. Never read runs/ in the demo folder: those belong to whoever ran the app locally.
+        return super().load_runs(suite_id, version_id) if self._own(suite_id) else None
 
 
 class Sessions:

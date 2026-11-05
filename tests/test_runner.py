@@ -1,6 +1,7 @@
 import pytest
 
 from conftest import FakeProvider
+from rollout_ready import evaluate
 from rollout_ready.compare import build_comparison, missing_cases
 from rollout_ready.provider import ProviderError
 from rollout_ready.runner import estimate, estimate_sentence, run_version, run_versions
@@ -35,7 +36,7 @@ def test_live_comparison_runs_both_versions_for_real(suites_copy):
     comp = build_comparison(store, "followup-email", "v2", "v3", live=True)
     assert not comp.complete and len(comp.missing["v2"]) == len(comp.missing["v3"]) == 8
     fake = FakeProvider()
-    run_versions(store, "followup-email", ["v2", "v3"], fake, "j")(lambda d, t, m: None)
+    run_versions(store, "followup-email", ["v2", "v3"], fake, "claude-sonnet-5-5")(lambda d, t, m: None)
     assert fake.generate_calls == 16
     comp = build_comparison(store, "followup-email", "v2", "v3", live=True)
     assert comp.complete
@@ -58,7 +59,7 @@ def test_a_new_case_runs_only_that_case(suites_copy):
 def test_editing_an_input_reruns_it(suites_copy):
     store = Store(suites_copy)
     v = store.add_version("partner-outreach", "Prompt", "Note")
-    run_version(store, "partner-outreach", v.id, FakeProvider(), "j")
+    run_version(store, "partner-outreach", v.id, FakeProvider(), "claude-sonnet-5-5")
     store.update_case("partner-outreach", "harlow-cold", "Cold outreach", "Harlow Analytics", "Changed notes")
     suite = store.load_suite("partner-outreach")
     cases = store.load_cases("partner-outreach")
@@ -70,18 +71,20 @@ def test_failed_call_keeps_results_already_saved(suites_copy):
     v = store.add_version("partner-outreach", "Prompt", "Note")
     with pytest.raises(ProviderError):
         run_version(store, "partner-outreach", v.id, FakeProvider(fail_after=5), "j")
-    saved = store.load_runs("partner-outreach", v.id)
-    assert len(saved.cases) == 2
+    record = evaluate.latest_record(store, "partner-outreach", v.id, v.id)
+    assert record.status == "incomplete" and record.verdict is None
+    assert sum(i.status == "complete" for i in record.items) == 2
     retry = FakeProvider()
     run_version(store, "partner-outreach", v.id, retry, "j")
-    assert retry.generate_calls == 4  # 6 examples, 2 saved before the failure
+    # 6 examples: 2 complete, and the 3rd answer was saved before its review failed, so it is reused.
+    assert retry.generate_calls == 3 and retry.judge_calls == 4
 
 
 def test_live_results_flow_into_the_same_comparison(suites_copy):
     store = Store(suites_copy)
     v = store.add_version("partner-outreach", "Prompt", "Note")
-    run_version(store, "partner-outreach", "v1", FakeProvider(score=3), "j")
-    run_version(store, "partner-outreach", v.id, FakeProvider(score=5), "j")
+    run_version(store, "partner-outreach", "v1", FakeProvider(score=3), "claude-sonnet-5-5")
+    run_version(store, "partner-outreach", v.id, FakeProvider(score=5), "claude-sonnet-5-5")
     comp = build_comparison(store, "partner-outreach", "v1", v.id, live=True)
     assert comp.complete and comp.verdict == "Ready to roll out"
     assert comp.new_info.input_tokens > 0

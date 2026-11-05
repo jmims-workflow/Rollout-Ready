@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{% if event.from_version %}Version {{ event.from_version[1:] }} to version {{ event.to_version[1:] }}{% else %}Version {{ event.to_version[1:] }} in use{% endif %} | {% endblock %}
+{% block content %}
+<a class="back" href="/prompts/{{ suite.id }}">{{ suite.name }}</a>
+<h1 class="page-title">{% if event.from_version %}Version {{ event.from_version[1:] }} to version {{ event.to_version[1:] }}{% else %}Version {{ event.to_version[1:] }} in use{% endif %}</h1>
+
+<section class="card" aria-labelledby="rel-h">
+  <h2 id="rel-h" class="visually-hidden">What was recorded</h2>
+  <dl class="facts">
+    <div><dt>Date</dt><dd>{{ day(event.timestamp) }}</dd></div>
+    <div><dt>Confirmed by</dt><dd>{{ event.confirmed_by or "not given" }}<span class="help">{{ names_help }}.</span></dd></div>
+    <div><dt>Type</dt><dd>{{ suite.type_label }}</dd></div>
+    <div><dt>What happened</dt><dd>{{ event.summary }}</dd></div>
+    <div><dt>Based on</dt><dd>
+      {% if based_on %}{% set c = based_on.comp %}
+        {% if c.current.id == c.new.id %}Version {{ c.new.number }} scored on its own{% else %}Version {{ c.new.number }} compared with version {{ c.current.number }}{% endif %} ({{ c.source_label }}). <a href="{{ based_on.url }}">Open that result</a>
+      {% elif event.type == "return" %}No test. Putting an earlier version back doesn't rely on a test.
+      {% else %}No test.{% endif %}
+    </dd></div>
+    {% if overrides %}
+    <div><dt>Your calls at the time</dt><dd><ul>{% for o in overrides %}<li>{{ case_names.get(o.case_id, o.case_id) }}: {{ o.reason }}</li>{% endfor %}</ul></dd></div>
+    {% endif %}
+  </dl>
+</section>
+
+{% if event.from_version %}
+{% set back = event.from_version[1:] %}
+<section class="card" aria-labelledby="undo-h">
+  <h2 id="undo-h">If something goes wrong</h2>
+  <p>If something goes wrong, copy version {{ back }}, paste it back into your tool, and mark version {{ back }} as in use.</p>
+  <div class="copy-row">
+    <button class="btn btn-secondary" type="button" data-copy-target="from-text" data-copied="Copied." hidden>Copy version {{ back }}</button>
+    <span class="copy-status" role="status" aria-live="polite"></span>
+  </div>
+  <details class="inline"><summary>Show the instructions<span class="visually-hidden"> for version {{ back }}</span></summary><pre class="prompt-text" id="from-text" tabindex="0">{{ from_text }}</pre></details>
+  {% if from_status == "Retired" %}<p><a href="/prompts/{{ suite.id }}?put_back={{ event.from_version }}#put-back-{{ event.from_version }}">Put version {{ back }} back into use</a></p>{% endif %}
+</section>
+{% endif %}
+
+<p class="muted small">{{ recorded_note }}</p>
+<p><a href="/prompts/{{ suite.id }}">Back to {{ suite.name }}</a></p>
+{% endblock %}

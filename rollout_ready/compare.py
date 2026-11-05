@@ -1,7 +1,10 @@
-"""Build a comparison between two versions from their saved results.
+"""Build a comparison between two versions from an evaluation record.
 
 Demo and live mode both come through here, so the checks, scoring and
 verdict code is exactly the same whichever mode produced the outputs.
+Demo mode builds its record from the recorded results that ship with the
+app; live mode uses saved evaluation records, or saved answers and reviews
+that match the current inputs (evaluate.py).
 """
 
 from __future__ import annotations
@@ -11,8 +14,10 @@ from collections import Counter
 from dataclasses import dataclass, field
 from statistics import mean
 
-from . import scoring
+from . import evaluate, scoring
 from .checks import CheckResult, run_checks, word_count
+from .config import DEFAULT_JUDGE_MODEL
+from .evidence import EvaluationRecord
 from .models import CASE_KINDS, Case, CaseResult, Criterion, Override, Run, Suite, Version, VersionResults
 from .storage import Store, input_hash, rubric_hash
 
@@ -30,7 +35,7 @@ def entry_is_current(entry: CaseResult, suite: Suite, case: Case) -> bool:
 
 
 def load_results(store: Store, suite_id: str, version_id: str, live: bool) -> VersionResults:
-    """Demo mode reads recorded results only. Live mode reads its own saved runs only.
+    """Demo mode reads recorded results only. Live mode reads older saved runs (before V3) only.
 
     Recorded demo results never count as saved results in live mode, so a live
     comparison is never a silent mix of sample and real outputs.
@@ -49,7 +54,15 @@ def usable_runs(results: VersionResults, suite: Suite, case: Case) -> list[Run] 
     return None
 
 
-def missing_cases(store: Store, suite: Suite, cases: list[Case], version_id: str, live: bool) -> list[Case]:
+def missing_cases(store: Store, suite: Suite, cases: list[Case], version_id: str, live: bool,
+                  reviewer_model: str = DEFAULT_JUDGE_MODEL) -> list[Case]:
+    """Examples this version has no usable results for.
+
+    Live mode: any repetition still needs an answer or a review for the current inputs.
+    Demo mode: no recorded result matches the current inputs.
+    """
+    if live:
+        return evaluate.cases_needing_calls(store, suite, cases, version_id, reviewer_model)
     results = load_results(store, suite.id, version_id, live)
     return [c for c in cases if usable_runs(results, suite, c) is None]
 
@@ -106,8 +119,8 @@ class CaseRow:
 
     @property
     def blocking_misses(self) -> list[Criterion]:
-        """Missed deal-breakers that block a rollout. An override replaces the AI reviewer's call."""
-        return [] if self.override else self.new_missed
+        """Missed deal-breakers that block a rollout. An override never hides one (spec section 5)."""
+        return self.new_missed
 
     @property
     def current_words(self) -> int:
@@ -199,10 +212,35 @@ class Comparison:
     missing: dict[str, list[Case]] = field(default_factory=dict)
     current_info: RunInfo | None = None
     new_info: RunInfo | None = None
+    record: EvaluationRecord | None = None
+    saved: bool = False  # a saved live record, as opposed to one built on the fly
+    legacy: bool = False  # older results saved before V3: some details weren't recorded
+
+    @property
+    def status(self) -> str:
+        if self.legacy:
+            return "incomplete"
+        if self.record is not None and self.record.status in ("running", "interrupted"):
+            return self.record.status
+        return "complete" if not any(self.missing.values()) and bool(self.rows) else "incomplete"
 
     @property
     def complete(self) -> bool:
-        return not any(self.missing.values()) and bool(self.rows)
+        return self.status == "complete"
+
+    @property
+    def source_label(self) -> str:
+        if self.record is not None and self.record.source == "recorded":
+            return "Saved example: recorded results"
+        return "Real results"
+
+    @property
+    def item_problems(self) -> list[str]:
+        """Plain messages for items that were cut off or failed, for example "This answer was cut off..."."""
+        if self.record is None:
+            return []
+        return list(dict.fromkeys(i.message for i in self.record.items
+                                  if i.status in ("cut_off", "failed") and i.message))
 
     def count(self, result: str) -> int:
         return sum(1 for r in self.rows if r.result == result)
@@ -274,7 +312,7 @@ class Comparison:
 
     @property
     def verdict(self) -> str:
-        return scoring.verdict(self.worse, self.better, bool(self.deal_breaker_misses))
+        return scoring.verdict(self.worse, self.better, bool(self.deal_breaker_misses), complete=self.complete)
 
     @property
     def verdict_key(self) -> str:
@@ -284,7 +322,7 @@ class Comparison:
     def explanation(self) -> str:
         return scoring.explanation(
             self.verdict, self.new.full_name, self.current.full_name,
-            self.worse, self.better, self.avg_current, self.avg_new,
+            self.worse, self.better, self.avg_current, self.avg_new, total=len(self.rows),
         )
 
     @property
@@ -294,17 +332,25 @@ class Comparison:
     def row(self, case_id: str) -> CaseRow | None:
         return next((r for r in self.rows if r.case.id == case_id), None)
 
+    def apply_overrides(self, overrides: dict[str, Override]) -> "Comparison":
+        """Count each overridden example the way the person said. Scores and deal-breaker misses don't change."""
+        for r in self.rows:
+            r.override = overrides.get(r.case.id)
+        order = {scoring.WORSE: 0, scoring.BETTER: 1, scoring.SAME: 2}
+        self.rows.sort(key=lambda r: order[r.result])
+        return self
+
     def diff(self) -> list[tuple[str, str]]:
         return prompt_diff(self.current.text, self.new.text)
 
 
-def _info(results: VersionResults, rows_runs: list[list[Run]]) -> RunInfo:
+def _info(source: str, model: str, judge_model: str, ran_at: str, rows_runs: list[list[Run]]) -> RunInfo:
     runs = [r for rs in rows_runs for r in rs]
     return RunInfo(
-        source=results.source,
-        model=results.model,
-        judge_model=results.judge_model,
-        ran_at=results.ran_at,
+        source=source,
+        model=model,
+        judge_model=judge_model,
+        ran_at=ran_at,
         input_tokens=sum(r.input_tokens + r.judge_input_tokens for r in runs),
         output_tokens=sum(r.output_tokens + r.judge_output_tokens for r in runs),
     )
@@ -321,27 +367,41 @@ def _checks_for(suite: Suite, runs: list[Run]) -> list[CheckResult]:
     return out
 
 
-def build_comparison(
-    store: Store, suite_id: str, current_id: str, new_id: str, live: bool,
-    overrides: dict[str, Override] | None = None,
-) -> Comparison:
-    suite = store.load_suite(suite_id)
-    cases = store.load_cases(suite_id)
-    current = store.load_version(suite_id, current_id)
-    new = store.load_version(suite_id, new_id)
-    cur_res = load_results(store, suite_id, current_id, live)
-    new_res = load_results(store, suite_id, new_id, live)
+def _case(e) -> Case:
+    return Case(id=e.id, name=e.name, label=e.label, kind=e.kind, input=e.input)
+
+
+def _version(v) -> Version:
+    return Version(id=v.id, number=v.number, title=v.title, note=v.note, created=v.created, text=v.text)
+
+
+def record_suite(record: EvaluationRecord, suite: Suite | None = None) -> Suite:
+    """The set as this record tested it: its own qualities, checks, threshold and repetitions."""
+    evidence_config = {"rubric": list(record.qualities), "checks": list(record.checks), "threshold": record.threshold,
+                       "repeats": record.repetitions, "model": record.model}
+    if suite is not None:
+        return suite.model_copy(update=evidence_config)
+    return Suite(id=record.suite_id, name=record.suite_id, **evidence_config)
+
+
+def comparison_from_evidence(ev: "evaluate.Evidence", suite: Suite | None = None,
+                             overrides: dict[str, Override] | None = None) -> Comparison:
+    """A comparison showing exactly what one evaluation record used and found."""
+    rec = ev.record
+    suite = record_suite(rec, suite)
+    cases = [_case(e) for e in rec.examples]
+    current, new = _version(rec.baseline), _version(rec.candidate)
     comp = Comparison(suite=suite, current=current, new=new, cases=cases,
-                      missing={current_id: [], new_id: []})
+                      missing={current.id: [], new.id: []}, record=rec, saved=ev.saved and bool(rec.id))
     crit_ids = [c.id for c in suite.rubric]
     cur_used, new_used = [], []
     for case in cases:
-        cur_runs = usable_runs(cur_res, suite, case)
-        new_runs = usable_runs(new_res, suite, case)
+        cur_runs = ev.runs(current.id, case.id)
+        new_runs = ev.runs(new.id, case.id)
         if cur_runs is None:
-            comp.missing[current_id].append(case)
-        if new_runs is None and new_id != current_id:
-            comp.missing[new_id].append(case)
+            comp.missing[current.id].append(case)
+        if new_runs is None and new.id != current.id:
+            comp.missing[new.id].append(case)
         if cur_runs is None or new_runs is None:
             continue
         cur_used.append(cur_runs)
@@ -384,9 +444,40 @@ def build_comparison(
         ))
     order = {scoring.WORSE: 0, scoring.BETTER: 1, scoring.SAME: 2}
     comp.rows.sort(key=lambda r: order[r.result])
-    comp.current_info = _info(cur_res, cur_used)
-    comp.new_info = _info(new_res, new_used)
+    ran = rec.finished or rec.started
+    comp.current_info = _info(rec.source, rec.model, rec.reviewer_model, ran, cur_used)
+    comp.new_info = _info(rec.source, rec.model, rec.reviewer_model, ran, new_used)
     return comp
+
+
+def build_comparison(
+    store: Store, suite_id: str, current_id: str, new_id: str, live: bool,
+    overrides: dict[str, Override] | None = None, reviewer_model: str = DEFAULT_JUDGE_MODEL,
+) -> Comparison:
+    """The comparison for this pair under the current inputs (demo: recorded; live: saved evidence)."""
+    suite = store.load_suite(suite_id)
+    if live:
+        ev = evaluate.live_evidence(store, suite_id, current_id, new_id, reviewer_model)
+    else:
+        ev = evaluate.recorded_evidence(store, suite_id, current_id, new_id)
+    comp = comparison_from_evidence(ev, suite, overrides)
+    if (live and not comp.saved and not comp.complete
+            and evaluate.has_legacy_results(store, suite_id, [current_id, new_id])):
+        comp.legacy = True
+    return comp
+
+
+def comparison_for_record(store: Store, suite_id: str, evaluation_id: str,
+                          overrides: dict[str, Override] | None = None) -> Comparison | None:
+    """Open one saved evaluation: it shows its own evidence, whatever changed since."""
+    ev = evaluate.load(store, suite_id, evaluation_id)
+    if ev is None:
+        return None
+    try:
+        suite = store.load_suite(suite_id)
+    except Exception:
+        suite = None
+    return comparison_from_evidence(ev, suite, overrides)
 
 
 def prompt_diff(old: str, new: str) -> list[tuple[str, str]]:

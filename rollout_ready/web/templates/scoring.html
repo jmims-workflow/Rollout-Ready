@@ -27,16 +27,17 @@
   </ul>
   <p>Then the answer is:</p>
   <ul>
-    <li>Nothing got worse and at least one got better: <strong>Ready to roll out</strong>, unless a deal-breaker is missed.</li>
-    <li>Nothing got worse or better: <strong>No clear difference</strong>.</li>
-    <li>Some got worse, but more got better: <strong>Not ready to roll out</strong>. Fix the ones that got worse first.</li>
-    <li>Some got worse, and no more got better: <strong>Keep the current version</strong>.</li>
+    <li>Any answer or review is missing or was cut off: <strong>Test incomplete</strong>. There's no verdict until the missing examples run.</li>
+    <li>A deal-breaker is missed on any example, or some got worse and no more got better: <strong>Not ready to roll out</strong>.</li>
+    <li>Some got worse, but more got better, and no deal-breaker is missed: <strong>Needs review</strong>. Look at the ones that got worse before deciding.</li>
+    <li>Nothing got worse, at least one got better, and no deal-breaker is missed: <strong>Ready to roll out</strong>.</li>
+    <li>Nothing got worse or better, and no deal-breaker is missed: <strong>No clear difference</strong>.</li>
   </ul>
 </section>
 
 <section class="card">
   <h2>Deal-breakers</h2>
-  <p>Some qualities matter more than the rest: getting the facts right, or answering every question. Mark those as deal-breakers. If the AI reviewer scores a deal-breaker {{ cutoff }} or lower on any example, the version you're trying can't be "Ready to roll out", whatever the average says. If it newly misses one, that example counts as Got worse.</p>
+  <p>Some qualities matter more than the rest: getting the facts right, or answering every question. Mark those as deal-breakers. If the AI reviewer scores a deal-breaker {{ cutoff }} or lower on any example, even once when an example runs more than once, the version you're trying is "Not ready to roll out", whatever the average says. If it newly misses one, that example counts as Got worse.</p>
   <p>Most prompts have one or two deal-breakers. If everything is a deal-breaker, nothing is.</p>
 </section>
 

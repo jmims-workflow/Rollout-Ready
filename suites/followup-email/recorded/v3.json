@@ -2,7 +2,7 @@
   "version": "v3",
   "model": "claude-sonnet-5-5",
   "judge_model": "claude-sonnet-5-5",
-  "ran_at": "2026-10-16T18:05:00Z",
+  "ran_at": "2026-10-30T18:05:00Z",
   "cases": {
     "ridgeway-pricing": {
       "model": "claude-sonnet-5-5",

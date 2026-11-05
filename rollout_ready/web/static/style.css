@@ -12,7 +12,7 @@
   --primary: #6A3D66;       /* buttons, links, Got better, selected tab, logo tile */
   --primary-dark: #4F2D4C;  /* button hover */
   --primary-soft: #EFE2EE;
-  --alert-fill: #FBE8E2;    /* Not ready and Keep the current version */
+  --alert-fill: #FBE8E2;    /* Not ready and Needs review */
   --alert-line: #E8B9AC;
   --alert-ink: #7A3322;
   --worse-ink: #A3361B;     /* Got worse and deal-breaker text */
@@ -240,15 +240,15 @@ input[type="radio"], input[type="checkbox"] { width: 22px; height: 22px; margin:
 /* verdict card and banner colors -------------------------------------- */
 .verdict { border: 1px solid var(--line); border-radius: var(--radius-card); padding: 1.4rem; margin-bottom: 1.25rem; background: var(--card); }
 .verdict-ready { background: var(--primary-soft); border-color: var(--primary); }
-.verdict-same { background: var(--card); border-color: var(--line); }
-.verdict-not-ready, .verdict-keep { background: var(--alert-fill); border-color: var(--alert-line); }
+.verdict-same, .verdict-incomplete { background: var(--card); border-color: var(--line); }
+.verdict-not-ready, .verdict-review { background: var(--alert-fill); border-color: var(--alert-line); }
 .verdict-icon { width: 40px; height: 40px; flex: none; }
 .vi-mark { stroke: var(--on-primary); }
 .vi-dot { fill: var(--on-primary); }
 .verdict-ready .vi-fill { fill: var(--primary); }
-.verdict-same .vi-fill { fill: var(--muted); }
-.verdict-not-ready .vi-fill, .verdict-keep .vi-fill { fill: var(--alert-ink); }
-.verdict-not-ready h2, .verdict-keep h2 { color: var(--alert-ink); }
+.verdict-same .vi-fill, .verdict-incomplete .vi-fill { fill: var(--muted); }
+.verdict-not-ready .vi-fill, .verdict-review .vi-fill { fill: var(--alert-ink); }
+.verdict-not-ready h2, .verdict-review h2 { color: var(--alert-ink); }
 .verdict-ready h2 { color: var(--primary); }
 .verdict-head { display: flex; gap: .85rem; align-items: flex-start; }
 .eyebrow { font-size: .88rem; font-weight: 600; color: var(--muted); margin: 0 0 .1rem; }
@@ -413,3 +413,37 @@ progress { width: 100%; height: 1.25rem; accent-color: var(--primary); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* rolling out: notices, the decision block, release records ------------- */
+.notice.warn { background: var(--alert-fill); border-color: var(--alert-line); }
+.notice.warn svg { color: var(--alert-ink); }
+.notice-heading { font-size: 1rem; margin: 0 0 .35rem; }
+.notice ul { margin: 0; padding-left: 1.2rem; }
+.inline-form { margin: .6rem 0 0; }
+.source-tag { margin: .2rem 0 0; }
+.decision h3 { font-size: 1.15rem; margin: .25rem 0 .6rem; }
+.steps { padding-left: 1.3rem; margin: 0 0 1rem; }
+.steps li { margin-bottom: .6rem; }
+.steps p { margin: 0 0 .35rem; }
+.copy-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: .35rem; }
+.help { display: block; font-size: .9rem; color: var(--muted); margin: .2rem 0 0; }
+.field input[type="text"], .field input:not([type]) { width: 100%; max-width: 36rem; min-height: 44px; }
+.check-field { display: flex; gap: .6rem; align-items: flex-start; margin: 0 0 1rem; }
+.check-field input { width: 22px; height: 22px; margin-top: .15rem; flex: none; }
+.check-field label { min-height: 44px; display: flex; align-items: flex-start; }
+.rollout-anyway, .put-back { margin-top: .75rem; }
+.rollout-anyway > summary, .put-back > summary {
+  min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; color: var(--primary);
+}
+.tag-status { margin-right: .35rem; }
+.tag-in-use { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.tag-retired { background: var(--page); color: var(--muted); }
+.tag-draft { background: var(--card); color: var(--ink); }
+.history-list li { padding: .55rem 0; border-top: 1px solid var(--line); }
+.history-list li:first-child { border-top: 0; }
+.facts { margin: 0; }
+.facts > div { display: grid; grid-template-columns: minmax(7rem, 11rem) 1fr; gap: .25rem 1rem; padding: .5rem 0; border-top: 1px solid var(--line); }
+.facts > div:first-child { border-top: 0; }
+.facts dt { font-weight: 600; }
+.facts dd { margin: 0; }
+@media (max-width: 480px) { .facts > div { grid-template-columns: 1fr; } }

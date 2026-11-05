@@ -4,5 +4,10 @@
 {% block content %}
 <h1 class="page-title">{{ heading }}</h1>
 {{ notice(message, "error" if not info else "info") }}
+{% if start_over %}
+<form method="post" action="/demo/start-over">
+  <button class="btn" type="submit">Start over</button>
+</form>
+{% endif %}
 <p><a href="{{ back_url or '/' }}">{{ back_text or 'Go back home' }}</a></p>
 {% endblock %}

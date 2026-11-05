@@ -30,7 +30,7 @@ def test_ready_run_exits_0(no_network):
     assert r.exit_code == 0 and "Ready to roll out" in r.output
 
 
-def test_keep_current_exits_1_and_no_difference_exits_0(no_network):
+def test_not_ready_exits_1_and_no_difference_exits_0(no_network):
     assert runner.invoke(app, ["run", "webinar-invite", "--current", "v2", "--new", "v3"]).exit_code == 1
     assert runner.invoke(app, ["run", "webinar-invite", "--current", "v1", "--new", "v2"]).exit_code == 0
     assert runner.invoke(app, ["run", "partner-outreach", "--current", "v1", "--new", "v2"]).exit_code == 0
@@ -45,3 +45,13 @@ def test_live_without_key_falls_back(no_network, monkeypatch):
 def test_unknown_version():
     r = runner.invoke(app, ["run", "followup-email", "--current", "v2", "--new", "v9"])
     assert r.exit_code == 2
+
+
+def test_test_incomplete_exits_2(suites_copy, no_network, monkeypatch):
+    """A version with no saved results can't get a verdict, so the command exits 2."""
+    from rollout_ready.storage import Store
+    monkeypatch.delenv("ROLLOUT_MODE", raising=False)
+    Store(suites_copy).add_version("followup-email", "A version nobody has run", "Untested")
+    r = runner.invoke(app, ["run", "followup-email", "--current", "v2", "--new", "v5",
+                            "--suites-dir", str(suites_copy)])
+    assert r.exit_code == 2 and "Verdict" not in r.output

@@ -1,0 +1,113 @@
+{# Putting a version into use: the three steps, shared by the results page, Put back into use and the release record. #}
+
+{% macro steps(number, text, suite, prefix) -%}
+<ol class="steps">
+  <li>
+    <p>Copy the new instructions.</p>
+    <div class="copy-row">
+      <button class="btn btn-secondary" type="button" data-copy-target="{{ prefix }}-text" data-copied="Copied." hidden>Copy the instructions</button>
+      <span class="copy-status" role="status" aria-live="polite"></span>
+    </div>
+    <details class="inline"><summary>Show the instructions<span class="visually-hidden"> for version {{ number }}</span></summary><pre class="prompt-text" id="{{ prefix }}-text" tabindex="0">{{ text }}</pre></details>
+  </li>
+  <li><p>{% if suite.where_text %}Paste them into your team's tool: {% if suite.where_url %}<a href="{{ suite.where_url }}">{{ suite.where_text }}</a>{% else %}{{ suite.where_text }}{% endif %}.{% else %}Paste them into your team's tool.{% endif %}</p></li>
+  <li><p>Come back and confirm, so everyone knows which version is in use.</p></li>
+</ol>
+{%- endmacro %}
+
+{% macro name_field(prefix, value='') -%}
+{% if not settings.is_public %}
+<div class="field">
+  <label for="{{ prefix }}-name">Your name (optional)</label>
+  <input id="{{ prefix }}-name" name="name" maxlength="60" value="{{ value }}" aria-describedby="{{ prefix }}-name-help" autocomplete="name">
+  <p class="help" id="{{ prefix }}-name-help">{{ names_help }}.</p>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro reason_field(prefix, label, value='') -%}
+<div class="field">
+  <label for="{{ prefix }}-reason">{{ label }} (required)</label>
+  <input id="{{ prefix }}-reason" name="reason" maxlength="200" required value="{{ value }}" aria-describedby="{{ prefix }}-reason-help">
+  <p class="help" id="{{ prefix }}-reason-help">One line, so your team knows why. Up to 200 characters.</p>
+</div>
+{%- endmacro %}
+
+{% macro mode_note() -%}
+{% if settings.is_public %}<p class="muted small">{{ public_release_note }}</p>
+{% elif not settings.is_live %}<p class="muted small">{{ demo_release_note }}</p>{% endif %}
+{%- endmacro %}
+
+{% macro errors_box(errors, id) -%}
+{% if errors %}
+<div class="notice error" role="alert" id="{{ id }}" tabindex="-1" data-focus-on-load>
+  <div>
+    <h3 class="notice-heading">Nothing was recorded</h3>
+    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro decision_block(comp, suite) -%}
+{% set f = decision_form or {} %}
+{% set n = comp.new.number %}
+<section class="card decision" id="decide" aria-labelledby="decide-h">
+  <h2 id="decide-h">What happens next</h2>
+  {{ errors_box(decision_errors, "decision-errors") }}
+  {% if new_is_in_use %}
+  <p>Version {{ n }} is the version in use.</p>
+  {% elif decide_kind == "rollout" %}
+  <h3>Put version {{ n }} into use</h3>
+  <form method="post" action="/prompts/{{ suite.id }}/release">
+    <input type="hidden" name="kind" value="rollout">
+    <input type="hidden" name="version" value="{{ comp.new.id }}">
+    <input type="hidden" name="evaluation" value="{{ comp.record.id }}">
+    <input type="hidden" name="token" value="{{ token }}">
+    {{ steps(n, comp.new.text, suite, "rollout") }}
+    {{ name_field("rollout", f.get("name", "")) }}
+    <button class="btn" type="submit">I've updated it: mark version {{ n }} as in use</button>
+    <p class="muted small">{{ recorded_note }}</p>
+    {{ mode_note() }}
+  </form>
+  <p><a href="/prompts/{{ suite.id }}">Not now</a></p>
+  {% elif decide_kind == "exception" %}
+  {% if comp.verdict == "Not ready to roll out" %}
+  <p><a class="btn btn-secondary" href="/test?suite={{ suite.id }}&amp;against={{ in_use_id }}">Test a change</a></p>
+  {% elif comp.verdict == "Needs review" %}
+  <p><a class="text-link" href="#examples">Review the {{ plural(comp.worse, 'example') }} that got worse</a></p>
+  {% elif comp.verdict == "No clear difference" %}
+  <p>Nothing got clearly better or worse. Version {{ in_use_number }} stays in use unless you roll this out anyway.</p>
+  {% endif %}
+  <details class="rollout-anyway"{% if decision_errors %} open{% endif %}>
+    <summary>Roll out anyway</summary>
+    <form method="post" action="/prompts/{{ suite.id }}/release">
+      <input type="hidden" name="kind" value="exception">
+      <input type="hidden" name="version" value="{{ comp.new.id }}">
+      <input type="hidden" name="evaluation" value="{{ comp.record.id }}">
+      <input type="hidden" name="token" value="{{ token }}">
+      {{ steps(n, comp.new.text, suite, "anyway") }}
+      {{ reason_field("anyway", "Why roll it out anyway?", f.get("reason", "")) }}
+      {% if comp.verdict == "Not ready to roll out" and miss_rows %}
+      <p>Examples that missed a deal-breaker:</p>
+      <ul>{% for r in miss_rows %}<li><a href="{{ example_url(suite.id, r.case.id, comp.current.id, comp.new.id) }}">{{ r.case.name }}</a></li>{% endfor %}</ul>
+      <div class="check-field">
+        <input type="checkbox" id="anyway-deal" name="deal_breaker_ack" value="1"{% if f.get("deal_breaker_ack") %} checked{% endif %}>
+        <label for="anyway-deal">I've read the {{ plural(miss_rows|length, 'example') }} that missed a deal-breaker.</label>
+      </div>
+      {% endif %}
+      {% if changed %}
+      <div class="check-field">
+        <input type="checkbox" id="anyway-ack" name="baseline_ack" value="1"{% if f.get("baseline_ack") %} checked{% endif %}>
+        <label for="anyway-ack">I understand this test didn't compare against the version in use.</label>
+      </div>
+      {% endif %}
+      {{ name_field("anyway", f.get("name", "")) }}
+      <button class="btn" type="submit">I've updated it: mark version {{ n }} as in use</button>
+      <p class="muted small">This is recorded as put into use after review, with the result {{ comp.verdict }}. {{ recorded_note }}</p>
+      {{ mode_note() }}
+    </form>
+  </details>
+  {% endif %}
+</section>
+{%- endmacro %}

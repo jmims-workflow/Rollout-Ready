@@ -17,7 +17,8 @@ from . import scoring
 from .compare import build_comparison, summary_text
 from .config import load_settings
 from .provider import ClaudeProvider, ProviderError
-from .runner import estimate_sentence, pending_for, run_version
+from .evaluate import run_evaluation
+from .runner import estimate_sentence, pending_for
 from .storage import Store, SuiteError
 
 app = typer.Typer(add_completion=False, help="Rollout Ready: test a prompt change before your team sees it.")
@@ -50,21 +51,20 @@ def run(
     report: Optional[Path] = typer.Option(None, "--report", help="Also write the summary as Markdown to this file."),
     suites_dir: Optional[Path] = typer.Option(None, help="Folder that holds the suites."),
 ) -> None:
-    """Compare two versions and print the verdict. Exits 1 if the new version should not roll out."""
+    """Compare two versions and print the verdict. Exits 0 if ready or no clear difference, 1 if not ready or it needs review, 2 if the test is incomplete."""
     settings = load_settings(suites_dir, force_live=live)
     if settings.fallback_notice:
         typer.echo(settings.fallback_notice, err=True)
     store = Store(settings.suites_dir)
     try:
         if settings.is_live:
-            todo = pending_for(store, suite, [current, new])
+            todo = pending_for(store, suite, [current, new], settings.judge_model)
             if todo:
                 typer.echo(estimate_sentence(todo, store.load_suite(suite).repeats))
                 provider = ClaudeProvider(settings.api_key or "")
-                for v in (current, new):
-                    run_version(store, suite, v, provider, settings.judge_model,
-                                lambda d, t, m: typer.echo(f"  {d}/{t} {m}"))
-        comp = build_comparison(store, suite, current, new, settings.is_live)
+                run_evaluation(store, suite, current, new, provider, settings.judge_model,
+                               lambda d, t, m: typer.echo(f"  {d}/{t} {m}"))
+        comp = build_comparison(store, suite, current, new, settings.is_live, reviewer_model=settings.judge_model)
     except (SuiteError, ProviderError) as exc:
         typer.echo(f"Error: {exc}", err=True)
         raise typer.Exit(2)
@@ -83,8 +83,9 @@ def run(
     if report:
         report.write_text(summary_text(comp, markdown=True), encoding="utf-8")
         typer.echo(f"Summary written to {report}")
-    if scoring.blocks_rollout(comp.verdict):
-        raise typer.Exit(1)
+    code = scoring.exit_code(comp.verdict)
+    if code:
+        raise typer.Exit(code)
 
 
 @app.command()
