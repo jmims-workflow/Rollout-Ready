@@ -459,7 +459,7 @@ progress { width: 100%; height: 1.25rem; accent-color: var(--primary); }
 }
 .strip-hide:focus-visible { outline: 3px solid var(--on-primary); outline-offset: 2px; }
 .main-nav { flex-basis: auto; margin-left: auto; }
-.whats-this { display: inline-block; margin: 0 0 .5rem; font-size: .92rem; }
+.whats-this { display: block; margin: 0 0 .5rem; font-size: .92rem; }
 .whats-this > summary { cursor: pointer; color: var(--primary); text-decoration: underline; min-height: 44px; display: inline-flex; align-items: center; }
 .whats-this p { margin: .25rem 0 0; color: var(--ink); max-width: 46rem; }
 
@@ -524,3 +524,4 @@ progress { width: 100%; height: 1.25rem; accent-color: var(--primary); }
 .how-more details > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; color: var(--primary); }
 .how-more details[open] > summary { margin-bottom: .5rem; }
 .section-title { font-size: 1.25rem; margin: 1.5rem 0 .75rem; }
+.excerpts { margin-bottom: 1rem; }

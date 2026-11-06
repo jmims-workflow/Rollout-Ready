@@ -12,7 +12,7 @@ PART_OF_A_SET = """## Part of a set
 Rollout Ready is one of three apps that follow an AI tool through its life at a company:
 
 * [Sandbox to Shipped](https://github.com/jmims-workflow/Sandbox-to-Shipped): should we build or approve this AI tool?
-* Rollout Ready (this repo): does a change to the tool's prompt make it better or worse before the team sees it?
+* **Rollout Ready** (this repo): is a change to the tool's instructions ready to roll out, and which version is in use now?
 * [AI Adoption & Impact Tracker](https://github.com/jmims-workflow/ai-adoption-tracker): once it's live, are people using it, and is it helping?
 
 They are separate apps with no shared code. Together they cover deciding, testing and measuring.

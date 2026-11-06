@@ -7,20 +7,25 @@ const path = require("path");
 const BASE = process.env.BASE_URL || "http://127.0.0.1:8080";
 const OUT = path.join(__dirname, "..", "docs", "screenshots");
 const EXAMPLE = "/prompts/followup-email/examples/ridgeway-pricing?current=v2&new=v3";
+const NOT_READY = "/i/followup-email/result?current=v2&new=v3";
+const READY = "/i/followup-email/result?current=v2&new=v4";
 
 const shots = [
   { name: "start-desktop.png", url: "/", width: 1280, height: 900 },
   { name: "start-phone.png", url: "/", width: 390, height: 844, mobile: true },
-  { name: "results-desktop.png", url: "/results", width: 1280, height: 900 },
-  // Open the disagree form so the screenshot shows it.
-  { name: "example-detail-desktop.png", url: EXAMPLE, width: 1280, height: 900, open: "details.disagree" },
-  { name: "test-a-change-desktop.png", url: "/test", width: 1280, height: 900 },
-  { name: "new-prompt-desktop.png", url: "/prompts/new", width: 1280, height: 900 },
+  { name: "result-not-ready-desktop.png", url: NOT_READY, width: 1280, height: 900 },
+  { name: "result-not-ready-phone.png", url: NOT_READY, width: 390, height: 844, mobile: true },
+  { name: "result-ready-desktop.png", url: READY, width: 1280, height: 900 },
+  { name: "result-ready-phone.png", url: READY, width: 390, height: 844, mobile: true },
+  { name: "instructions-desktop.png", url: "/i/followup-email", width: 1280, height: 900 },
+  { name: "test-a-change-desktop.png", url: "/i/followup-email/test", width: 1280, height: 900 },
 ];
 
-const narrowPages = ["/", "/results", "/results?tab=good", "/results?tab=changes", "/results?tab=details",
-  "/results?suite=webinar-invite&current=v2&new=v3", "/results?suite=partner-outreach",
-  EXAMPLE, "/test", "/prompts", "/prompts/followup-email", "/prompts/new", "/how-it-works"];
+const narrowPages = ["/", "/how-it-works", "/i/followup-email", "/i/followup-email?tab=versions",
+  "/i/followup-email?tab=examples", "/i/followup-email?tab=good", "/i/partner-outreach", "/i/webinar-invite",
+  "/i/followup-email/test", NOT_READY, NOT_READY + "&tab=examples", NOT_READY + "&tab=changes",
+  NOT_READY + "&tab=details", READY, "/i/partner-outreach/result?current=v2&new=v3",
+  "/i/webinar-invite/result?current=v1&new=v2", EXAMPLE, "/prompts/new"];
 
 (async () => {
   const browser = await chromium.launch();

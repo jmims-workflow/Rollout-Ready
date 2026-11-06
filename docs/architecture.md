@@ -2,13 +2,25 @@
 
 Back to the [README](../README.md).
 
+## Pages
+
+| Page | Address | Old addresses that redirect |
+| --- | --- | --- |
+| Manage (start screen) | `/` | `/prompts`, `/suites` |
+| Instructions page | `/i/<id>` | `/prompts/<id>`, `/suites/<id>` |
+| Test a change | `/i/<id>/test` (`?from=vN` for Edit and test again) | `/test` |
+| Result | `/i/<id>/result?current=v2&new=v3`; one saved test at `/i/<id>/tests/<evaluation id>` | `/results`, `/?suite=...`, `/prompts/<id>/tests/<id>` |
+| How it works | `/how-it-works` | `/scoring` |
+
+Add AI instructions (`/prompts/new`), example detail pages, release records and every form post keep their addresses.
+
 ## Plain words and technical terms
 
 The app uses plain words on screen. For technical readers, here is what they mean:
 
 | On screen | Technical term | In code and files |
 | --- | --- | --- |
-| A prompt | A prompt under test, with its versions and test set | a suite: `suites/<id>/suite.yaml` |
+| AI instructions (a set) | A prompt under test, with its versions and test set | a suite: `suites/<id>/suite.yaml` |
 | Examples | A regression test set: inputs only, no reference answers | test cases: `cases.yaml` |
 | The AI reviewer | LLM-as-judge with blind, per-output scoring against a rubric (no pairwise comparison) | `judge.py` |
 | What good looks like | A rubric of 3 to 5 criteria with anchored 1 and 5 descriptions | `rubric:` in `suite.yaml` |

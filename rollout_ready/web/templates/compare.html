@@ -161,8 +161,8 @@
   </ul>
   {% if comp.mix_line %}<p class="mix">{{ comp.mix_line }}</p>{{ whats_this("example kinds", help_text("kinds")) }}{% endif %}
   {% if nudge %}{{ nudge_box() }}{% endif %}
-  {{ whats_this("the AI reviewer", "Claude reads each answer on its own and scores it from 1 to 5 on every quality, with a one-sentence reason. It never sees which version wrote the answer.") }}
   <p class="muted small">An example got worse if its score clearly dropped, it failed a quick check it used to pass, or it newly missed a deal-breaker. Small moves count as about the same, because every run varies a little. Open an example to see the AI reviewer's reasons, or to disagree with it.</p>
+  {{ whats_this("the AI reviewer", "Claude reads each answer on its own and scores it from 1 to 5 on every quality, with a one-sentence reason. It never sees which version wrote the answer.") }}
 </section>
 
 <section class="card tab-panel" role="tabpanel" id="panel-changes" aria-labelledby="tab-changes"{% if tab != "changes" %} hidden{% endif %}>
