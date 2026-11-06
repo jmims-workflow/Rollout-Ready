@@ -40,8 +40,8 @@ REQUIRED = {
                                "until you roll it out.", "Edit the version your team uses now",
                                "What are you changing, and why?", "It will be tested on 8 examples"],
     "/i/followup-email/result?current=v2&new=v3": [
-        "Not ready to roll out", "Based on 8 examples. Even when a version is ready, spot-check real outputs in its "
-        "first week.", "What this test covers", "Tested on Claude using these instructions and 8 saved examples."],
+        "Not ready to roll out", "Based on 8 examples.", "What this test covers",
+        "Tested on Claude using these instructions and 8 saved examples."],
     "/how-it-works": ["What each verdict means", "What rolling out does and doesn't do"],
 }
 
@@ -72,7 +72,7 @@ def summaries(page: str) -> list[str]:
 
 
 def test_whats_this_where_the_terms_appear(demo):
-    assert summaries(demo.get("/").text) == ["What's this? the verdict"]
+    assert summaries(demo.get("/").text) == []  # removed at review: it wasn't attached to anything
     assert summaries(demo.get("/i/followup-email").text) == [
         "What's this? the verdict", "What's this? example kinds", "What's this? deal-breakers"]
     assert summaries(demo.get("/i/followup-email/result?current=v2&new=v3").text) == [
@@ -149,3 +149,13 @@ def test_old_addresses_land_on_the_new_pages(demo, old, final):
 def test_plain_words_on_every_page(demo, url):
     r = demo.get(url)
     assert r.status_code == 200 and technical_words(page_text(r.text)) == []
+
+
+def test_partner_outreach_says_business_development(demo):
+    """Section 8 renamed the team everywhere it shows. Tested version texts are left as they were written."""
+    from rollout_ready.storage import Store
+    from conftest import SUITES
+    suite = Store(SUITES).load_suite("partner-outreach")
+    for field in (suite.description, suite.who_uses_it, suite.input_label, suite.team):
+        assert "partnership" not in field.lower()
+    assert "a business development rep's notes" in page_text(demo.get("/").text)

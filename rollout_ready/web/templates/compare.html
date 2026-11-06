@@ -94,7 +94,7 @@
   </details>
 </section>
 
-<details class="card about-test">
+<details class="about-test">
   <summary>About this test</summary>
   <p>{{ vname(new_id)|capitalize }}, the version you're trying, compared with {{ vname(current_id) }}{% if current_id == in_use_id %}, the version your team uses now{% elif comp.record and comp.record.baseline_in_use %} (in use at the time){% endif %}.</p>
   <p><strong>{{ comp.new.title or "What changed" }}.</strong> {{ comp.new.note }}</p>

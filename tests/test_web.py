@@ -147,7 +147,7 @@ def test_results_opens_on_the_latest_result(demo):
     # Decision 2: one short deal-breaker line above the fold; the longer rule is in About this test.
     assert 'Missed a deal-breaker: "Answers every question asked" on 2 examples.' in text
     assert "A missed deal-breaker blocks a rollout, whatever the average says." in text
-    assert "Based on 8 examples. Even when a version is ready, spot-check real outputs in its first week." in text
+    assert "Based on 8 examples." in text and "spot-check" not in text  # the reminder is for Ready only
     assert "Edit and test again" in text
     # What went wrong opens first for Not ready (PR 2a decision).
     assert 'id="tab-wrong" href="?tab=wrong#tabs" aria-controls="panel-wrong" aria-selected="true"' in r.text
@@ -219,7 +219,9 @@ def test_demo_verdicts_render(demo):
                     ("suite=webinar-invite&current=v1&new=v2", "No clear difference"),
                     ("suite=webinar-invite&current=v2&new=v3", "Not ready to roll out")]:
         page = demo.get("/results?" + q).text
-        assert text in page and "spot-check real outputs in its first week" in page
+        assert text in page and "Based on" in page
+        # The spot-check reminder shows on Ready only.
+        assert ("spot-check real outputs in its first week" in page) == (text == "Ready to roll out")
 
 
 def test_picking_a_prompt_opens_its_default_pair(demo):

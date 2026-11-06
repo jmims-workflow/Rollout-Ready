@@ -82,7 +82,9 @@ def test_featured_deal_breaker_callout_and_evidence_line(demo_store):
     assert comp.deal_breaker_callout == (
         'Missed a deal-breaker: "Answers every question asked" on 2 examples. '
         "A missed deal-breaker blocks a rollout, whatever the average says.")
-    assert comp.evidence_line == "Based on 8 examples. Even when a version is ready, spot-check real outputs in its first week."
+    assert comp.evidence_line == "Based on 8 examples."  # the spot-check reminder is for Ready only
+    ready = build_comparison(demo_store, "followup-email", "v2", "v4", live=False)
+    assert ready.evidence_line == "Based on 8 examples. Even when a version is ready, spot-check real outputs in its first week."
     assert comp.mix_line == "Example mix: 3 everyday, 2 messy, 2 tricky, 1 that caused a problem before."
 
 

@@ -34,8 +34,7 @@ def test_not_ready_shows_one_clear_answer(demo):
     top = above_the_fold(demo.get(NOT_READY).text)
     assert top == ('Not ready to roll out Version 3 made 4 examples better and 2 examples worse. The average score '
                    'went up from 3.6 to 3.9, which would have hidden both problems. Missed a deal-breaker: "Answers '
-                   'every question asked" on 2 examples. Based on 8 examples. Even when a version is ready, '
-                   'spot-check real outputs in its first week. Edit and test again')
+                   'every question asked" on 2 examples. Based on 8 examples. Edit and test again')
 
 
 def test_ready_main_action_jumps_to_the_steps_on_this_page(demo):
@@ -64,7 +63,7 @@ def test_header_details_and_scope_are_behind_disclosures(demo):
     assert "What does this verdict mean? The verdict is one answer from the examples:" in scope
     assert "What's a deal-breaker? A deal-breaker is a quality an answer must never get wrong" in scope
     assert "blocks a rollout, whatever the average says." in scope
-    about = page_text(page.split('<details class="card about-test">')[1].split("</details>")[0])
+    about = page_text(page.split('<details class="about-test">')[1].split("</details>")[0])
     assert about.startswith("About this test Version 3, the version you're trying, compared with version 2, "
                             "the version your team uses now.")
     assert "Saved example: recorded results" in about and "Under 120 words." in about

@@ -49,7 +49,7 @@ The owner of a set of AI instructions in a sales, marketing, business developmen
 - **One broken example matters more than the average.** In the demo, version 3 of the Sales follow-up assistant raised the average from 3.6 to 3.9 but stopped answering customers' questions on 2 examples, so it is "Not ready to roll out."
 - **Deal-breakers always block.** A score of 2 or lower on a deal-breaker, in any run, means "Not ready to roll out". People can overrule the AI reviewer on an example, with a reason, but never hide a missed deal-breaker.
 - **Rolling out is recorded, not performed.** Each release says which version, when, who confirmed it, and the test it relied on. An exception keeps its original verdict.
-- **Honest about the evidence.** Every verdict says "Based on N examples. Even when a version is ready, spot-check real outputs in its first week."
+- **Honest about the evidence.** Every verdict says "Based on N examples." Ready adds: "Even when a version is ready, spot-check real outputs in its first week."
 - **Blind scoring, real logic in the demo.** The AI reviewer never sees which version wrote an answer, and the demo replays recorded answers through the same scoring and verdict code.
 
 ## What's saved
@@ -130,4 +130,4 @@ rollout run followup-email --current v2 --new v3
 - [Configuration](docs/configuration.md): demo and live mode, settings, public live mode and its limits
 - [Deploy](docs/deploy.md): Cloud Run, secrets and a spending cap
 
-Screens were mocked up on a design canvas in Claude before any code was written, then built with Claude Code.
+The current screens were built from a written spec with Claude Code, and each change was reviewed as screenshots before merging.

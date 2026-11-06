@@ -110,7 +110,7 @@ Live mode: `ROLLOUT_MODE=live` plus `ANTHROPIC_API_KEY`. Public live mode adds `
 - Accessible on any screen size: labels on every input, visible focus, 44px targets, 4.5:1 contrast, no sideways scroll at 320px, reduced motion respected. No gradients, no emoji.
 - Plain UI copy for non-engineers: follow the word list above. Never "system prompt", "eval", "regression".
 - Colors: plum and blush, each defined once as a CSS custom property in `style.css`; use only those.
-- Every verdict shows the evidence line: "Based on N examples. Even when a version is ready, spot-check real outputs in its first week."
+- Every verdict shows the evidence line "Based on N examples."; Ready to roll out adds "Even when a version is ready, spot-check real outputs in its first week."
 - Don't add features beyond the spec without asking.
 
 ## Git

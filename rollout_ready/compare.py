@@ -302,9 +302,12 @@ class Comparison:
 
     @property
     def evidence_line(self) -> str:
+        """Every verdict says how many examples it rests on; Ready adds the spot-check reminder."""
         n = len(self.rows)
-        return (f"Based on {n} {scoring._cases(n)}. Even when a version is ready, "
-                "spot-check real outputs in its first week.")
+        line = f"Based on {n} {scoring._cases(n)}."
+        if self.verdict == scoring.READY:
+            line += " Even when a version is ready, spot-check real outputs in its first week."
+        return line
 
     @property
     def mix_line(self) -> str:
