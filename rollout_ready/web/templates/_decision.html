@@ -58,7 +58,7 @@
   {% if new_is_in_use %}
   <p>Version {{ n }} is the version in use.</p>
   {% elif decide_kind == "rollout" %}
-  <h3>Put version {{ n }} into use</h3>
+  <h3 id="put-into-use" tabindex="-1">Put version {{ n }} into use</h3>
   <form method="post" action="/prompts/{{ suite.id }}/release">
     <input type="hidden" name="kind" value="rollout">
     <input type="hidden" name="version" value="{{ comp.new.id }}">
@@ -72,11 +72,7 @@
   </form>
   <p><a href="/i/{{ suite.id }}">Not now</a></p>
   {% elif decide_kind == "exception" %}
-  {% if comp.verdict == "Not ready to roll out" %}
-  <p><a class="btn btn-secondary" href="/test?suite={{ suite.id }}&amp;against={{ in_use_id }}">Test a change</a></p>
-  {% elif comp.verdict == "Needs review" %}
-  <p><a class="text-link" href="#examples">Review the {{ plural(comp.worse, 'example') }} that got worse</a></p>
-  {% elif comp.verdict == "No clear difference" %}
+  {% if comp.verdict == "No clear difference" %}
   <p>Nothing got clearly better or worse. Version {{ in_use_number }} stays in use unless you roll this out anyway.</p>
   {% endif %}
   <details class="rollout-anyway"{% if decision_errors %} open{% endif %}>

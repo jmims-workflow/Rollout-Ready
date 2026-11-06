@@ -506,3 +506,14 @@ progress { width: 100%; height: 1.25rem; accent-color: var(--primary); }
 .kinds dt { font-weight: 600; }
 .kinds dd { margin: 0; color: var(--muted); }
 #add-example > summary, .test-steps details > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--primary); font-weight: 600; }
+
+/* result page --------------------------------------------------------------- */
+.verdict-head h1 { font-size: clamp(1.6rem, 4vw, 2.1rem); margin: 0; }
+.verdict-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-top: .75rem; }
+.verdict-actions form { margin: 0; }
+.scope { margin-top: .75rem; }
+.scope > summary, .about-test > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--primary); font-weight: 600; }
+.scope p { margin: .35rem 0 0; }
+.saved-example-label { margin: 0 0 .75rem; }
+.excerpts .panel h3 { font-size: 1rem; margin: 0 0 .35rem; }
+.excerpt { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }

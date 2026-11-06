@@ -59,7 +59,7 @@ def test_start_screen(demo):
             "and shows what improved, what got worse, and what needs your judgment before you update your team's "
             "tool.") in text
     assert "New here? See an example of a change it caught" in text
-    assert 'href="/results?suite=followup-email&amp;current=v2&amp;new=v3"' in r.text  # the featured Not ready result
+    assert 'href="/i/followup-email/result?current=v2&amp;new=v3"' in r.text  # the featured Not ready result
     assert "Latest result" not in text and "See why" not in text and "verdict-icon" not in r.text
     assert "Sound familiar?" in text
     for heading, body in [
@@ -144,16 +144,18 @@ def test_results_opens_on_the_latest_result(demo):
     text = page_text(r.text)
     assert "Not ready to roll out" in text
     assert "Version 3 made 4 examples better and 2 examples worse." in text
-    assert ('Missed a deal-breaker: "Answers every question asked" on 2 examples. '
-            "A missed deal-breaker blocks a rollout, whatever the average says.") in text
+    # Decision 2: one short deal-breaker line above the fold; the longer rule is in About this test.
+    assert 'Missed a deal-breaker: "Answers every question asked" on 2 examples.' in text
+    assert "A missed deal-breaker blocks a rollout, whatever the average says." in text
     assert "Based on 8 examples. Even when a version is ready, spot-check real outputs in its first week." in text
-    assert "Review the 2 examples that got worse" in text
-    assert 'aria-current="page">Examples' in r.text
+    assert "Edit and test again" in text
+    # What went wrong opens first for Not ready (PR 2a decision).
+    assert 'id="tab-wrong" href="?tab=wrong#tabs" aria-controls="panel-wrong" aria-selected="true"' in r.text
 
 
 def test_examples_are_cards_with_worse_first(demo):
     r = demo.get(FEATURED)
-    assert "<table" not in r.text.split('id="examples"')[1]
+    assert "<table" not in r.text.split('id="panel-examples"')[1].split("</section>")[0]
     cards = re.findall(r'<li class="example-card result-(\w+)">(.*?)</li>', r.text, flags=re.S)
     assert [c[0] for c in cards] == ["worse", "worse", "better", "better", "better", "better", "same", "same"]
     first = page_text(cards[0][1])
@@ -163,11 +165,13 @@ def test_examples_are_cards_with_worse_first(demo):
     assert "Example mix: 3 everyday, 2 messy, 2 complicated, 1 that broke before." in page_text(r.text)
 
 
-@pytest.mark.parametrize("tab,text", [("good", "Deal-breaker"), ("changes", "Removed"), ("details", "AI reviewer model")])
+@pytest.mark.parametrize("tab,text", [("wrong", "What went wrong"), ("examples", "Got worse"),
+                                      ("changes", "Removed"), ("details", "AI reviewer model")])
 def test_tabs(demo, tab, text):
     r = demo.get(f"{FEATURED}&tab={tab}")
     assert r.status_code == 200 and text in r.text
-    assert f'tab={tab}#examples" aria-current="page"' in r.text
+    assert f'id="tab-{tab}" href="?tab={tab}#tabs" aria-controls="panel-{tab}" aria-selected="true"' in r.text
+    assert f'id="panel-{tab}" aria-labelledby="tab-{tab}">' in r.text  # shown; the others are hidden
 
 
 def test_what_changed_uses_kept_removed_added(demo):

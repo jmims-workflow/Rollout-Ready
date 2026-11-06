@@ -256,7 +256,7 @@ def create_app(
         return with_overrides(request, comp)
 
     def results_url(suite_id: str, current: str, new: str, **extra) -> str:
-        return "/results?" + urlencode({"suite": suite_id, "current": current, "new": new, **extra})
+        return f"/i/{suite_id}/result?" + urlencode({"current": current, "new": new, **extra})
 
     def example_url(suite_id: str, case_id: str, current: str, new: str, **extra) -> str:
         return f"/prompts/{suite_id}/examples/{case_id}?" + urlencode({"current": current, "new": new, **extra})
@@ -371,10 +371,28 @@ def create_app(
 
 
     # results -----------------------------------------------------------
-    @app.get("/results", response_class=HTMLResponse)
-    def results(request: Request, suite: str = "", current: str = "", new: str = "", tab: str = "examples",
+    @app.get("/results")
+    def results(request: Request, suite: str = "", current: str = "", new: str = "", tab: str = "",
                 example: str = ""):
-        return results_view(request, suite, current, new, tab, example == "1")
+        """See results is now each set's result page. Old links keep working."""
+        st = store_for(request)
+        suites = ordered(st.suites())
+        if not suites:
+            return RedirectResponse("/", status_code=301)
+        if suite not in [s.id for s in suites]:
+            pick = latest_pair(request, st, suites)
+            suite, current, new = pick if pick else (suites[0].id, current, new)
+        if not current or not new:
+            pair = default_pair(request, next(s for s in suites if s.id == suite), st.versions(suite))
+            if pair:
+                current, new = current or pair[0], new or pair[1]
+        extra = {k: v for k, v in (("tab", OLD_TABS.get(tab, tab)), ("example", example)) if v}
+        return RedirectResponse(results_url(suite, current, new, **extra), status_code=301)
+
+    @app.get("/i/{suite_id}/result", response_class=HTMLResponse)
+    def result_page(request: Request, suite_id: str, current: str = "", new: str = "", tab: str = "",
+                    example: str = ""):
+        return results_view(request, suite_id, current, new, tab, example == "1")
 
     def results_view(request: Request, suite: str, current: str, new: str, tab: str = "examples",
                      example: bool = False, status: int = 200, **extra):
@@ -401,7 +419,6 @@ def create_app(
             later = [v for v in vids if int(v[1:]) > int(current[1:])]
             new = later[-1] if later else vids[-1]
         tab = OLD_TABS.get(tab, tab)
-        tab = tab if tab in TABS else "examples"
         ctx = dict(nav="results", suites=suites, suite=the_suite, versions=versions,
                    current_id=current, new_id=new, tab=tab, example=example,
                    base_q=results_url(suite, current, new), comp=None, error=None)
@@ -419,8 +436,56 @@ def create_app(
         else:
             ctx["estimate"] = estimate_sentence(sum(len(v) for v in comp.missing.values()), the_suite.repeats)
         ctx.update(decision_ctx(request, st, the_suite, versions, comp))
+        ctx.update(result_layout(comp, ctx, tab))
         ctx.update(extra)
         return page(request, "compare.html", status=status, **ctx)
+
+    def result_layout(comp: Comparison, ctx: dict, tab: str) -> dict:
+        """One clear answer on top, details in tabs (decision 2)."""
+        if not comp.complete:
+            return dict(tabs=[], tab="", went_wrong=None, main_action=None)
+        wrong = comp.verdict in (scoring.NOT_READY, scoring.NEEDS_REVIEW)
+        tabs = ([("wrong", "What went wrong")] if wrong else []) + [
+            ("examples", "Examples"), ("changes", "What changed"), ("details", "Behind the scenes")]
+        keys = [k for k, _ in tabs]
+        tab = tab if tab in keys else ("wrong" if wrong else "examples")
+        suite_id, n = comp.suite.id, comp.new.number
+        main = None
+        if ctx.get("new_is_in_use") or ctx.get("stale") or ctx.get("separate"):
+            main = None
+        elif ctx.get("changed"):
+            label = f"Test version {n} against version {ctx['in_use_number']}"
+            main = (dict(label=label, post=True, current=ctx["in_use_id"], new=comp.new.id) if settings.is_live
+                    else dict(label=label, url=results_url(suite_id, ctx["in_use_id"], comp.new.id)))
+        elif ctx.get("decide_kind") == "rollout":
+            main = dict(label=f"Put version {n} into use", url="#put-into-use")
+        elif comp.verdict == scoring.NEEDS_REVIEW:
+            main = dict(label=f"Review the {_plural(comp.worse, 'example')} that got worse",
+                        url=results_url(suite_id, comp.current.id, comp.new.id, tab="wrong") + "#tabs")
+        else:
+            main = dict(label="Edit and test again", url=test_url(suite_id, **{"from": comp.new.id}))
+        return dict(tabs=tabs, tab=tab, went_wrong=went_wrong(comp) if wrong else None, main_action=main)
+
+    def went_wrong(comp: Comparison) -> dict | None:
+        """The example with the biggest drop: its input, short excerpts, and the AI reviewer's reason (spec 7d)."""
+        worse = sorted((r for r in comp.rows if r.result == scoring.WORSE), key=lambda r: r.change)
+        missed = [r for r in comp.rows if r.blocking_misses]
+        row = (worse or missed or [None])[0]
+        if row is None:
+            return None
+
+        def short(text: str, n: int) -> str:
+            text = " ".join(text.split())
+            return text if len(text) <= n else text[:n].rsplit(" ", 1)[0] + "..."
+
+        crit = None
+        if row.newly_missed or row.blocking_misses:
+            miss = (row.newly_missed or row.blocking_misses)[0]
+            crit = next((c for c in row.criteria if c.criterion.id == miss.id), None)
+        crit = crit or row.biggest_drop
+        return dict(row=row, input=short(row.case.input, 220), current=short(row.current_output, 320),
+                    new=short(row.new_output, 320), quality=crit.criterion.name if crit else "",
+                    reason=crit.new_reason if crit else "")
 
     # deciding: notices and the decision block on the results page -----------------
     def decision_ctx(request: Request, st: Store, suite: Suite, versions: list[Version], comp: Comparison) -> dict:
