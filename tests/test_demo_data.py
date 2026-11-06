@@ -83,7 +83,7 @@ def test_featured_deal_breaker_callout_and_evidence_line(demo_store):
         'Missed a deal-breaker: "Answers every question asked" on 2 examples. '
         "A missed deal-breaker blocks a rollout, whatever the average says.")
     assert comp.evidence_line == "Based on 8 examples. Even when a version is ready, spot-check real outputs in its first week."
-    assert comp.mix_line == "Example mix: 3 everyday, 2 messy, 2 complicated, 1 that broke before."
+    assert comp.mix_line == "Example mix: 3 everyday, 2 messy, 2 tricky, 1 that caused a problem before."
 
 
 def test_followup_deal_breakers_and_team(demo_store):
@@ -146,7 +146,7 @@ def test_partner_outreach_v1_to_v2_is_ready(demo_store):
     assert (fmt(comp.avg_current), fmt(comp.avg_new)) == ("3.4", "3.8")
     assert comp.verdict == "Ready to roll out"
     assert misses(comp) == {}
-    assert comp.mix_line == "Example mix: 2 everyday, 1 messy, 2 complicated, 1 that broke before."
+    assert comp.mix_line == "Example mix: 2 everyday, 1 messy, 2 tricky, 1 that caused a problem before."
 
 
 def test_partner_outreach_checks_really_flip(demo_store):
@@ -254,7 +254,7 @@ def test_demo_prompts_have_teams_and_a_mix(demo_store):
     for sid in demo_store.suite_ids():
         cases = demo_store.load_cases(sid)
         assert not needs_harder_examples(cases), sid
-        assert "broke before" in example_mix(cases), sid
+        assert "caused a problem before" in example_mix(cases), sid
 
 
 def test_every_recorded_version_covers_every_case(demo_store):

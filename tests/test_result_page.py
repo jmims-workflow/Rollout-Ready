@@ -58,8 +58,12 @@ def test_no_clear_difference_with_the_version_in_use(demo):
 def test_header_details_and_scope_are_behind_disclosures(demo):
     page = demo.get(NOT_READY).text
     scope = page_text(page.split('<details class="scope">')[1].split("</details>")[0])
-    assert scope == ("What this test covers Tested on Claude using these instructions and 8 saved examples. "
-                     "The Project's uploaded files. Paste the facts it relies on into the instructions instead.")
+    assert scope.startswith("What this test covers Tested on Claude using these instructions and 8 saved examples. "
+                            "The Project's uploaded files. Paste the facts it relies on into the instructions instead.")
+    # The verdict and deal-breaker help sit here, one click away, so the verdict card stays as it is (PR 2a).
+    assert "What does this verdict mean? The verdict is one answer from the examples:" in scope
+    assert "What's a deal-breaker? A deal-breaker is a quality an answer must never get wrong" in scope
+    assert "blocks a rollout, whatever the average says." in scope
     about = page_text(page.split('<details class="card about-test">')[1].split("</details>")[0])
     assert about.startswith("About this test Version 3, the version you're trying, compared with version 2, "
                             "the version your team uses now.")

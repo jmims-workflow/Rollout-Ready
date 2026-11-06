@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import notice, team_tag %}
+{% from "_macros.html" import notice, team_tag, whats_this, help_text with context %}
 {% block content %}
 <section class="hero" aria-labelledby="hero-h">
   <p class="hero-kicker">The output reveals the gap.</p>
@@ -35,6 +35,7 @@
   {% if settings.is_public %}{{ notice(private_note, "info") }}{% endif %}
   {% if error %}{{ notice(error, "error") }}{% endif %}
   <ul class="plain-list set-list">{% for c in waiting %}{{ set_card(c) }}{% endfor %}</ul>
+  {% if waiting %}{{ whats_this("the verdict", help_text("verdict")) }}{% endif %}
   {% if quiet %}
   <details class="more-sets"{% if not waiting %} open{% endif %}>
     <summary>Show {{ quiet|length }} more with no changes waiting</summary>

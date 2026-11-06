@@ -162,7 +162,7 @@ def test_examples_are_cards_with_worse_first(demo):
     assert "Pricing question left unanswered" in first and "Tricky" in first and "Ridgeway Logistics" in first
     assert "Missed a deal-breaker: Answers every question asked" in first
     assert "4.0 to 2.8" in first and "Got worse" in first
-    assert "Example mix: 3 everyday, 2 messy, 2 complicated, 1 that broke before." in page_text(r.text)
+    assert "Example mix: 3 everyday, 2 messy, 2 tricky, 1 that caused a problem before." in page_text(r.text)
 
 
 @pytest.mark.parametrize("tab,text", [("wrong", "What went wrong"), ("examples", "Got worse"),
@@ -320,7 +320,7 @@ def test_live_overrides_are_saved_next_to_the_results(live, live_settings):
 
 
 # example mix nudge -----------------------------------------------------------------
-NUDGE = "Most prompts break on messy or complicated examples. Add one or two so this test means more."
+NUDGE = "Most AI instructions break on messy or tricky examples. Add one or two so this test means more."
 
 
 def test_no_nudge_when_the_mix_is_good(demo):
@@ -363,7 +363,7 @@ def test_prompts_show_team_tags_and_deal_breaker_badges(demo):
 def test_new_prompt_form_has_a_deal_breaker_checkbox_per_quality(demo):
     r = demo.get("/prompts/new")
     assert r.text.count("This is a deal-breaker") == 5
-    assert "Something the output must never get wrong. Most prompts have one or two." in r.text
+    assert "Something the output must never get wrong. Most sets of instructions have one or two." in r.text
     assert r.text.count("What kind of example is this?") == 8
 
 

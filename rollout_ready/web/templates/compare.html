@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, pill, verdict_icon, notice, kind_tag, team_tag, deal_badge, nudge_box, honeypot, tab_list, whats_this %}
+{% from "_macros.html" import icon, pill, verdict_icon, notice, kind_tag, team_tag, deal_badge, nudge_box, honeypot, tab_list, whats_this, help_text with context %}
 {% from "_decision.html" import decision_block, errors_box with context %}
 {% block title %}{% if comp and comp.complete %}{{ comp.verdict }}: {% endif %}{{ suite.name }} | {% endblock %}
 {% block content %}
@@ -89,6 +89,8 @@
   <details class="scope">
     <summary>What this test covers</summary>
     <p>Tested on Claude using these instructions and {{ plural(comp.rows|length, 'saved example') }}. {{ suite.scope_line }}</p>
+    <p><strong>What does this verdict mean?</strong> {{ help_text("verdict") }}</p>
+    {% if comp.deal_breaker_misses %}<p><strong>What's a deal-breaker?</strong> {{ help_text("deal-breaker") }}</p>{% endif %}
   </details>
 </section>
 
@@ -157,7 +159,7 @@
     </li>
     {% endfor %}
   </ul>
-  {% if comp.mix_line %}<p class="mix">{{ comp.mix_line }}</p>{% endif %}
+  {% if comp.mix_line %}<p class="mix">{{ comp.mix_line }}</p>{{ whats_this("example kinds", help_text("kinds")) }}{% endif %}
   {% if nudge %}{{ nudge_box() }}{% endif %}
   {{ whats_this("the AI reviewer", "Claude reads each answer on its own and scores it from 1 to 5 on every quality, with a one-sentence reason. It never sees which version wrote the answer.") }}
   <p class="muted small">An example got worse if its score clearly dropped, it failed a quick check it used to pass, or it newly missed a deal-breaker. Small moves count as about the same, because every run varies a little. Open an example to see the AI reviewer's reasons, or to disagree with it.</p>

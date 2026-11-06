@@ -85,6 +85,13 @@
 </div>
 {%- endmacro %}
 
+{% macro help_text(key) -%}
+{%- if key == "verdict" -%}The verdict is one answer from the examples: Ready to roll out, Needs review, Not ready to roll out, No clear difference, or Test incomplete. A missed deal-breaker always means Not ready to roll out.
+{%- elif key == "deal-breaker" -%}A deal-breaker is a quality an answer must never get wrong, like the facts or answering every question. A score of {{ cutoff }} or lower on one, in any run, blocks a rollout, whatever the average says.
+{%- elif key == "kinds" -%}Everyday is a typical input. Messy is rough notes or missing details. Tricky has several people, asks or easy-to-mix-up details. Caused a problem before is an input where a real answer went wrong.
+{%- endif -%}
+{%- endmacro %}
+
 {% macro whats_this(term, text) -%}
 {# "What's this?" help at the first mention of a term on a page. #}
 <details class="whats-this"><summary>What's this?<span class="visually-hidden"> {{ term }}</span></summary><p>{{ text }}</p></details>

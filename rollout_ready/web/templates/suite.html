@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import notice, kind_tag, team_tag, deal_badge, nudge_box, kind_field, tab_list, whats_this %}
+{% from "_macros.html" import notice, kind_tag, team_tag, deal_badge, nudge_box, kind_field, tab_list, whats_this, help_text with context %}
 {% from "_decision.html" import steps, name_field, reason_field, mode_note, errors_box with context %}
 {% block title %}{{ suite.name }} | {% endblock %}
 {% block content %}
@@ -42,6 +42,7 @@
 <section class="card tab-panel" role="tabpanel" id="panel-history" aria-labelledby="tab-history"{% if tab != "history" %} hidden{% endif %}>
   <h2>Test history</h2>
   {% if history %}
+  {{ whats_this("the verdict", help_text("verdict")) }}
   <ul class="plain-list test-history">
     {% for h in history %}
     <li><span>Version {{ h.candidate }} vs version {{ h.baseline }}{% if h.then_in_use %} (in use at the time){% endif %}</span>
@@ -63,7 +64,7 @@
       <span><span class="tag tag-status tag-{{ st|lower|replace(' ', '-') }}">{{ st }}</span>{% if st == "In use" and since %} <span class="small">since {{ day(since) }}</span>{% endif %}
         {% if v.title %}<strong>{{ v.title }}.</strong> {% endif %}{{ v.note }} <span class="muted small">Saved {{ v.created }}</span>
         {% if st == "In use" %}<span class="help">{{ in_use_help }}</span>{% endif %}
-        <details class="inline"><summary>Show the prompt<span class="visually-hidden"> for version {{ v.number }}</span></summary><pre class="prompt-text" tabindex="0">{{ v.text }}</pre></details>
+        <details class="inline"><summary>Show the instructions<span class="visually-hidden"> for version {{ v.number }}</span></summary><pre class="prompt-text" tabindex="0">{{ v.text }}</pre></details>
         {% if st == "Retired" %}
         {% set rf = return_form or {} %}
         <details class="put-back" id="put-back-{{ v.id }}"{% if put_back == v.id %} open{% endif %}>
@@ -135,6 +136,7 @@
     {% endfor %}
   </ul>
   {% if mix %}<p class="mix">{{ mix }}</p>{% endif %}
+  {{ whats_this("example kinds", help_text("kinds")) }}
   {% if nudge %}{{ nudge_box() }}{% endif %}
   <p class="tip">Tip: when a real output goes wrong, add that input as an example that broke before. Change names and details first.</p>
   <details class="inline" id="add-example"><summary>Add an example</summary>{% include "_add_case.html" %}</details>
@@ -143,6 +145,7 @@
 <section class="card tab-panel" role="tabpanel" id="panel-good" aria-labelledby="tab-good"{% if tab != "good" %} hidden{% endif %}>
 
   <h2 id="r-h">What good looks like</h2>
+  {% if suite.rubric|selectattr('deal_breaker')|list %}{{ whats_this("deal-breakers", help_text("deal-breaker")) }}{% endif %}
   <div class="table-card table-scroll">
   <table>
     <thead><tr><th scope="col">Quality</th><th scope="col">A 5 looks like</th><th scope="col">A 1 looks like</th></tr></thead>

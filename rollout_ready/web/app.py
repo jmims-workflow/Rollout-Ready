@@ -162,7 +162,7 @@ def create_app(
     def too_many_examples(cases) -> str | None:
         if settings.is_public and len(cases) > config.PUBLIC_MAX_EXAMPLES:
             return (f"Live tests here run on at most {config.PUBLIC_MAX_EXAMPLES} examples, "
-                    f"and this prompt has {len(cases)}.")
+                    f"and these instructions have {len(cases)}.")
         return None
 
     def start_job(request: Request, title: str, done_url: str, work) -> Job:
@@ -399,8 +399,8 @@ def create_app(
         st = store_for(request)
         suites = ordered(st.suites())
         if not suites:
-            return problem(request, "There are no prompts yet.", heading="Nothing to show yet",
-                           back_url="/prompts/new", back_text="Add a new prompt")
+            return problem(request, "There are no AI instructions yet.", heading="Nothing to show yet",
+                           back_url="/prompts/new", back_text="Add AI instructions")
         ids = [s.id for s in suites]
         if suite not in ids:
             pick = latest_pair(request, st, suites)
@@ -411,7 +411,7 @@ def create_app(
         versions = st.versions(suite)
         vids = [v.id for v in versions]
         if not vids:
-            return problem(request, "This prompt has no versions yet.", status=404)
+            return problem(request, "These instructions have no versions yet.", status=404)
         pair = default_pair(request, the_suite, versions)
         if current not in vids:
             current = pair[0]
@@ -789,7 +789,7 @@ def create_app(
         except SuiteError as exc:
             return problem(request, str(exc), status=404)
         ctx.update(prompt_text=text, note=note, prefilled=False)
-        err = (length_problem(text, "prompt", settings.max_chars) or length_problem(note, "note", settings.max_chars)
+        err = (length_problem(text, "version", settings.max_chars) or length_problem(note, "note", settings.max_chars)
                or (None if text else "Paste the version you're trying first.")
                or (None if note else "Add a line about what changed and why, so you can tell versions apart later.")
                or too_many_examples(ctx["cases"]))
@@ -1000,7 +1000,7 @@ def create_app(
                 cid, n = f"{cid}-{n}", n + 1
             taken.add(cid)
             new_cases.append(Case(id=cid, name=name, label=label, kind=kind, input=text))
-        suite_id = st.create_suite(suite, new_cases, f["prompt_text"].strip(), note="The prompt the team uses today.")
+        suite_id = st.create_suite(suite, new_cases, f["prompt_text"].strip(), note="The instructions the team uses today.")
         # Version 1 is recorded as in use by the owner. In public mode the name is "you".
         releases.StoreLog(st, suite_id).append(releases.baseline_event("v1", "you" if settings.is_public else ""))
         job = start_job(request, "Scoring version 1 to set the starting point", f"/i/{suite_id}?created=1",
