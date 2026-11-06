@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Callable
 from urllib.parse import urlencode
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -32,7 +32,7 @@ from ..judge import draft_criteria
 from ..evidence import OverrideEvent
 from ..models import CASE_KINDS, Case, Check, Criterion, Suite, Version
 from ..provider import ClaudeProvider, Provider, ProviderError
-from ..runner import Job, JobManager, change_test_estimate, estimate_sentence, pending_for, run_versions
+from ..runner import Job, JobManager, change_test_estimate, estimate_sentence, pending_for, run_versions, time_sentence
 from ..public import SessionStore, Sessions, SharedResults, Usage
 from ..storage import Store, SuiteError, slugify
 
@@ -313,7 +313,7 @@ def create_app(
                     status=f"Version {draft.number} is waiting for a complete test.")
 
     def test_url(suite_id: str, **extra) -> str:
-        return "/test?" + urlencode({"suite": suite_id, **extra})
+        return f"/i/{suite_id}/test" + ("?" + urlencode(extra) if extra else "")
 
     def primary_action(w: dict | None, use: str, suite_id: str) -> dict:
         """The instructions page's one primary button (spec 7b)."""
@@ -658,46 +658,53 @@ def create_app(
         example it has no real results for, which is all of them when it has only sample results.
         """
         against_todo, _calls = change_test_estimate(st, suite.id, against, settings.judge_model)
-        return against_todo, estimate_sentence(len(cases) + against_todo, suite.repeats)
+        return against_todo, time_sentence(len(cases) + against_todo, suite.repeats)
 
-    def test_context(request: Request, suite_id: str, against: str) -> dict:
+    def test_context(request: Request, suite_id: str, against: str, start_from: str = "") -> dict:
+        """Test a change (spec 7c). The text box starts from the version in use, or from start_from."""
         st = store_for(request)
-        suites = ordered(st.suites())
-        ids = [s.id for s in suites]
-        if not settings.is_live:
-            suite_id, against = config.FEATURED_SUITE, config.FEATURED_CURRENT
+        ids = st.suite_ids()
         suite_id = suite_id if suite_id in ids else (config.FEATURED_SUITE if config.FEATURED_SUITE in ids else ids[0])
-        suite = next(s for s in suites if s.id == suite_id)
+        suite = st.load_suite(suite_id)
         versions = st.versions(suite_id)
         use = in_use(request, suite, versions)
         against_v = next((v for v in versions if v.id == against), None) or next(v for v in versions if v.id == use)
         cases = st.load_cases(suite_id)
-        ctx = dict(nav="test", suites=suites if settings.is_live else [suite], suite=suite,
-                   versions=versions if settings.is_live else [against_v],
-                   against=against_v, in_use=use, cases=cases, error=None, prompt_text="", note="",
-                   nudge=needs_harder_examples(cases), mix=example_mix(cases),
-                   against_todo=0, estimate="", prefilled=False, runs_line="", used_up=False, examples_problem=None,
-                   next_url="/test?" + urlencode({"suite": suite_id, "against": against_v.id}) + "#add-example")
+        start = next((v for v in versions if v.id == start_from), None) if start_from else None
+        featured = suite_id == config.FEATURED_SUITE
+        ctx = dict(nav="test", suite=suite, versions=versions, against=against_v, in_use=use, cases=cases, error=None,
+                   prompt_text=(start or against_v).text, note="", from_version=start.number if start else 0,
+                   nudge=needs_harder_examples(cases), mix=example_mix(cases), against_todo=0, estimate="",
+                   runs_line="", used_up=False, examples_problem=None, demo_other=False,
+                   featured=config.FEATURED_SUITE, saved_example=int(config.SAVED_EXAMPLE_VERSION[1:]),
+                   saved_example_url=(f"/i/{suite_id}/test?from={config.SAVED_EXAMPLE_VERSION}"
+                                      if featured and start_from != config.SAVED_EXAMPLE_VERSION else ""),
+                   next_url=f"/i/{suite_id}/test#add-example")
         if settings.is_live:
             ctx["against_todo"], ctx["estimate"] = test_estimate(st, suite, cases, against_v.id)
-        else:
+        elif featured:
             example = st.load_version(suite_id, config.SAVED_EXAMPLE_VERSION)
-            ctx.update(prompt_text=example.text, note=example.note,
-                       estimate=f"The saved example replays {len(cases)} recorded results, so it takes a moment and makes no calls to Claude.")
+            against_v = next(v for v in versions if v.id == config.FEATURED_CURRENT)
+            ctx.update(prompt_text=example.text, note=example.note, against=against_v,
+                       estimate="Takes a moment. The saved example replays recorded results and makes no calls to Claude.")
+        else:
+            ctx["demo_other"] = True
         if settings.is_public:
             left = runs_left(request)
             ctx.update(runs_line=f"{left} of {_plural(settings.limits.per_session, 'live test')} left today.",
                        used_up=left == 0, examples_problem=too_many_examples(cases))
-            if suite_id == config.FEATURED_SUITE:
-                # An editable starting point, so a first-time visitor can run a real test straight away.
-                example = st.load_version(suite_id, config.SAVED_EXAMPLE_VERSION)
-                ctx.update(prompt_text=example.text, note=example.note, prefilled=True)
         return ctx
 
-    @app.get("/test", response_class=HTMLResponse)
-    def test_form(request: Request, suite: str = "", against: str = ""):
+    @app.get("/test")
+    def test_form(request: Request, suite: str = ""):
+        """Test a change now lives on each set's page."""
+        return RedirectResponse(f"/i/{suite or config.FEATURED_SUITE}/test", status_code=301)
+
+    @app.get("/i/{suite_id}/test", response_class=HTMLResponse)
+    def test_page(request: Request, suite_id: str, against: str = "", start_from: str = Query("", alias="from")):
         try:
-            return page(request, "test.html", **test_context(request, suite, against))
+            store_for(request).load_suite(suite_id)
+            return page(request, "test.html", **test_context(request, suite_id, against, start_from))
         except SuiteError as exc:
             return problem(request, str(exc), status=404)
 

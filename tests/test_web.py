@@ -375,7 +375,7 @@ def test_how_it_works_covers_every_section(demo):
 
 def test_demo_test_page_replays_saved_example(demo):
     r = demo.get("/test")
-    assert "Run the saved example" in r.text and "readonly" in r.text
+    assert "Try a saved example change" in r.text and "readonly" in r.text
     assert "If answering every question takes more, answering wins." in r.text
     assert "Tricky" in r.text
     r = demo.post("/test", data={"prompt_text": "anything", "note": "x"}, follow_redirects=False)
@@ -474,17 +474,17 @@ def test_behind_the_scenes_says_sample_or_real_results_for_each_version(demo, li
 def test_test_a_change_estimate_counts_both_versions(live, live_settings):
     # v2 has only sample results, so all 8 examples run for both versions: 32 calls.
     text = page_text(live.get("/test?suite=followup-email&against=v2").text)
-    assert "This will make about 32 calls to Claude" in text
+    assert "Takes about 2 minutes." in text and "calls" not in text  # spec 7c: no call counts here
     assert "It has no real results yet, so it runs on every example too." in text
     r = live.post("/prompts/followup-email/examples",
                   data={"name": "New one", "input": "Notes", "against": "v2"},
                   headers={"X-Requested-With": "fetch"})
-    assert r.json()["estimate"].startswith("This will make about 36 calls to Claude")
+    assert r.json()["estimate"] == "Takes about 2 minutes."  # 36 calls
     # Once v2 has real results, only the version you're trying runs.
     live.post("/run", data={"suite": "followup-email", "current": "v2", "new": "v2"})
     wait_for_jobs(live)
     text = page_text(live.get("/test?suite=followup-email&against=v2").text)
-    assert "This will make about 18 calls to Claude" in text
+    assert "Takes about a minute." in text and "calls" not in text  # 18 calls
     assert "only the version you're trying needs to run" in text
     calls_before = live.fake.generate_calls + live.fake.judge_calls
     live.post("/test", data={"suite": "followup-email", "against": "v2", "prompt_text": "New", "note": "Try"})
@@ -576,7 +576,9 @@ def test_add_example_estimate_counts_the_version_in_use_when_none_is_given(live)
                       data={"name": f"New one {against}", "input": "Notes", "against": against},
                       headers={"X-Requested-With": "fetch"})
         n = r.json()["count"]
-        assert r.json()["estimate"].startswith(f"This will make about {n * 2 * 2} calls to Claude")
+        from rollout_ready.runner import time_sentence
+        # Both versions counted (2 x n examples), not just the version you're trying (n), which would read shorter.
+        assert r.json()["estimate"] == time_sentence(n * 2, 1) != time_sentence(n, 1)
 
 
 
@@ -608,3 +610,44 @@ def test_strip_contrast_and_tokens():
     css = (SUITES.parent / "rollout_ready/web/static/style.css").read_text()
     rule = re.search(r"\.demo-strip \{([^}]*)\}", css).group(1)
     assert "var(--ink)" in rule and "var(--on-primary)" in rule  # existing tokens: white on #2B1F29, 15.8 to 1
+
+
+
+# Test a change (spec 7c) ---------------------------------------------------------------
+def test_test_a_change_page_follows_the_spec(live, live_settings):
+    r = live.get("/i/partner-outreach/test")
+    text = page_text(r.text)
+    assert ("Edit the instructions, then test them on 6 examples. Nothing changes for your team until you roll it out."
+            in text)
+    assert "Step 1. Edit the version your team uses now" not in text  # numbering comes from CSS, not the words
+    for heading in ("Edit the version your team uses now", "What are you changing, and why?",
+                    "It will be tested on 6 examples"):
+        assert heading in text
+    v2 = (live_settings.suites_dir / "partner-outreach/versions/v2.md").read_text().split("---\n", 2)[2].strip()
+    assert v2.splitlines()[0] in r.text  # starts from the version in use
+    assert "What do these mean?" in text and "See all 6 examples" in text
+    assert ("Caught a bad output in real life? Add it as an example, with names changed, so every future change "
+            "is tested against it.") in text and "Add an example" in text
+    assert "Run test" in text and re.search(r"Takes (less than a minute|about [^.]+)\.", text)
+    assert "calls" not in text
+    for label in ("Everyday", "Messy", "Tricky", "Caused a problem before"):
+        assert label in text
+    assert 'for="prompt_text"' in r.text and 'for="note"' in r.text  # labels on every input
+
+
+def test_edit_and_test_again_starts_from_that_version(live, live_settings):
+    v3 = (live_settings.suites_dir / "followup-email/versions/v3.md").read_text().split("---\n", 2)[2].strip()
+    r = live.get("/i/followup-email/test?from=v3")
+    assert "Starting from version 3." in page_text(r.text) and v3.splitlines()[-1] in r.text
+
+
+def test_old_test_address_redirects_to_the_sets_page(demo):
+    r = demo.get("/test?suite=webinar-invite&against=v1", follow_redirects=False)
+    assert r.status_code == 301 and r.headers["location"] == "/i/webinar-invite/test"
+    assert demo.get("/test", follow_redirects=False).headers["location"] == "/i/followup-email/test"
+
+
+def test_demo_test_page_for_other_sets_points_to_the_saved_example(demo):
+    text = page_text(demo.get("/i/webinar-invite/test").text)
+    assert "This demo has one saved example change, for the Sales follow-up assistant." in text
+    assert "Try the saved example change" in text and "Run test" not in text

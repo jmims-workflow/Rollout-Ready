@@ -75,10 +75,15 @@ def test_sample_results_stay_visible(app):
 
 
 def test_test_page_is_prefilled_and_shows_privacy_and_runs_left(app, suites_copy):
-    r = visitor(app).get("/test")
+    v = visitor(app)
+    r = v.get("/test")
+    # Spec 7c: the text box starts from the version in use; the saved example change is one click away.
+    v2 = (suites_copy / "followup-email" / "versions" / "v2.md").read_text().split("---\n", 2)[2].strip()
+    assert v2.splitlines()[-1] in r.text and "Starting from version 2, the version in use." in r.text
+    assert 'href="/i/followup-email/test?from=v4">Try a saved example change</a>' in r.text
     v4 = (suites_copy / "followup-email" / "versions" / "v4.md").read_text().split("---\n", 2)[2].strip()
-    assert v4.splitlines()[0] in r.text
-    assert "Edit this or paste your own, then run it." in r.text
+    assert v4.splitlines()[-1] in v.get("/i/followup-email/test?from=v4").text
+    assert "Uses 1 of your 3 live tests today." in r.text
     assert PRIVATE.replace("'", "&#39;") in r.text
     assert "3 of 3 live tests left today." in r.text
     assert "Up to 5,000 characters." in r.text

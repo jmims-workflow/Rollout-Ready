@@ -57,7 +57,7 @@ def test_primary_button_reads_test_a_change_with_nothing_waiting(demo):
     fields = form_fields(demo.get(READY).text, "/prompts/followup-email/release", "rollout")
     demo.post("/prompts/followup-email/release", data=fields)  # version 4 into use: nothing newer waits
     url, label = primary(demo, "followup-email")
-    assert label == "Test a change" and url.startswith("/test?suite=followup-email")
+    assert label == "Test a change" and url == "/i/followup-email/test"
     assert "Waiting:" not in page_text(demo.get("/i/followup-email").text)
 
 

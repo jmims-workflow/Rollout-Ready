@@ -493,3 +493,16 @@ progress { width: 100%; height: 1.25rem; accent-color: var(--primary); }
 .test-history li:first-child { border-top: 0; }
 .test-history a { min-height: 44px; display: inline-flex; align-items: center; }
 .in-use-card h2, .waiting-card h2 { font-size: 1.15rem; margin: 0 0 .4rem; }
+
+/* Test a change -------------------------------------------------------------- */
+.test-steps { list-style: none; padding: 0; margin: 0; counter-reset: step; }
+.test-steps > li { counter-increment: step; }
+.test-steps > li > h2::before { content: "Step " counter(step) ". "; color: var(--muted); font-weight: 600; }
+.test-steps h2 { font-size: 1.15rem; margin: 0 0 .35rem; }
+.test-steps textarea.prompt { width: 100%; min-height: 16rem; }
+.test-steps input[type="text"] { width: 100%; min-height: 44px; }
+.kinds { margin: .5rem 0 0; }
+.kinds > div { padding: .3rem 0; }
+.kinds dt { font-weight: 600; }
+.kinds dd { margin: 0; color: var(--muted); }
+#add-example > summary, .test-steps details > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--primary); font-weight: 600; }
