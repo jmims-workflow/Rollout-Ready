@@ -1129,7 +1129,8 @@ def create_app(
 
     @app.get("/how-it-works", response_class=HTMLResponse)
     def how_it_works(request: Request):
-        return page(request, "scoring.html", nav="how")
+        from ..models import SCOPE_NOTES, TYPE_LABELS
+        return page(request, "scoring.html", nav="how", type_labels=TYPE_LABELS, scope_notes=SCOPE_NOTES)
 
     # old addresses from the first version ---------------------------------------
     @app.get("/scoring")

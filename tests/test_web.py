@@ -369,10 +369,20 @@ def test_new_prompt_form_has_a_deal_breaker_checkbox_per_quality(demo):
 
 def test_how_it_works_covers_every_section(demo):
     text = page_text(demo.get("/how-it-works").text)
+    # Spec 7h: four short points, then six disclosures.
     for heading in ("What the app does", "How the AI reviewer scores", "Why one broken example matters more than the average",
-                    "Deal-breakers", "Why you can disagree with the AI reviewer", "What a good example mix looks like",
-                    "How much a result proves"):
+                    "What each verdict means"):
         assert heading in text
+    page = demo.get("/how-it-works").text
+    summaries = re.findall(r"<summary>([^<]+)</summary>", page)
+    assert summaries == ["Deal-breakers", "Disagreeing with the AI reviewer", "A good example mix",
+                         "What rolling out does and doesn't do", "What each type tests",
+                         "What happens to your saved work"]
+    for verdict in ("Ready to roll out", "Needs review", "Not ready to roll out", "No clear difference", "Test incomplete"):
+        assert f"{verdict}:" in text
+    assert "doesn't update your AI tool, and it doesn't watch it afterward" in text
+    assert "The Project's uploaded files." in text and "Caused a problem before:" in text
+    assert "safer" not in text and "risk-free" not in text  # the claims rule
     assert "half a point or more" in text and "0.5" not in text
     assert "Six to eight good examples catch most breakages" in text
 
