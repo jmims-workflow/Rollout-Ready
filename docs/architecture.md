@@ -2,13 +2,25 @@
 
 Back to the [README](../README.md).
 
+## Pages
+
+| Page | Address | Old addresses that redirect |
+| --- | --- | --- |
+| Manage (start screen) | `/` | `/prompts`, `/suites` |
+| Instructions page | `/i/<id>` | `/prompts/<id>`, `/suites/<id>` |
+| Test a change | `/i/<id>/test` (`?from=vN` for Edit and test again) | `/test` |
+| Result | `/i/<id>/result?current=v2&new=v3`; one saved test at `/i/<id>/tests/<evaluation id>` | `/results`, `/?suite=...`, `/prompts/<id>/tests/<id>` |
+| How it works | `/how-it-works` | `/scoring` |
+
+Add AI instructions (`/prompts/new`), example detail pages, release records and every form post keep their addresses.
+
 ## Plain words and technical terms
 
 The app uses plain words on screen. For technical readers, here is what they mean:
 
 | On screen | Technical term | In code and files |
 | --- | --- | --- |
-| A prompt | A prompt under test, with its versions and test set | a suite: `suites/<id>/suite.yaml` |
+| AI instructions (a set) | A prompt under test, with its versions and test set | a suite: `suites/<id>/suite.yaml` |
 | Examples | A regression test set: inputs only, no reference answers | test cases: `cases.yaml` |
 | The AI reviewer | LLM-as-judge with blind, per-output scoring against a rubric (no pairwise comparison) | `judge.py` |
 | What good looks like | A rubric of 3 to 5 criteria with anchored 1 and 5 descriptions | `rubric:` in `suite.yaml` |
@@ -81,15 +93,16 @@ rollout run followup-email --current v2 --new v3 --report summary.md
 
 ## Demo data
 
-Demo mode has three fictional Northstar Systems prompts, one per team. In demo data, Needs review is reached only through an override. Version 2 is in use for all three, from `history.json`:
+Demo mode has three fictional Northstar Systems sets of AI instructions, one per team, and all four final verdicts. Version 2 is in use for all three, from `history.json`:
 
 | Prompt | Team | Versions | Verdict |
 | --- | --- | --- | --- |
-| Discovery follow-up email | Sales | 2 to 3 (featured) | Not ready to roll out, with a missed deal-breaker on 2 examples |
-| Discovery follow-up email | Sales | 2 to 4 (the saved example on Test a change) | Ready to roll out |
-| Partner outreach first message | Partnerships | 1 to 2 | Ready to roll out |
-| Webinar invite email | Marketing | 1 to 2 | No clear difference |
-| Webinar invite email | Marketing | 2 to 3 | Not ready to roll out, with a missed deal-breaker |
+| Sales follow-up assistant | Sales | 2 to 3 (featured) | Not ready to roll out, with a missed deal-breaker on 2 examples |
+| Sales follow-up assistant | Sales | 2 to 4 (the saved example on Test a change) | Ready to roll out |
+| Partner outreach | Business development | 1 to 2 | Ready to roll out |
+| Partner outreach | Business development | 2 to 3 | Needs review: 3 better, 1 worse, 2 about the same |
+| Webinar invite writer | Marketing | 1 to 2 | No clear difference |
+| Webinar invite writer | Marketing | 2 to 3 | Not ready to roll out, with a missed deal-breaker |
 
 ## What the tests cover
 

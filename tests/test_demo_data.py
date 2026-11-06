@@ -82,8 +82,10 @@ def test_featured_deal_breaker_callout_and_evidence_line(demo_store):
     assert comp.deal_breaker_callout == (
         'Missed a deal-breaker: "Answers every question asked" on 2 examples. '
         "A missed deal-breaker blocks a rollout, whatever the average says.")
-    assert comp.evidence_line == "Based on 8 examples. Even when a version is ready, spot-check real outputs in its first week."
-    assert comp.mix_line == "Example mix: 3 everyday, 2 messy, 2 complicated, 1 that broke before."
+    assert comp.evidence_line == "Based on 8 examples."  # the spot-check reminder is for Ready only
+    ready = build_comparison(demo_store, "followup-email", "v2", "v4", live=False)
+    assert ready.evidence_line == "Based on 8 examples. Even when a version is ready, spot-check real outputs in its first week."
+    assert comp.mix_line == "Example mix: 3 everyday, 2 messy, 2 tricky, 1 that caused a problem before."
 
 
 def test_followup_deal_breakers_and_team(demo_store):
@@ -135,10 +137,10 @@ def test_saved_example_v2_to_v4(demo_store):
     assert comp.row("ridgeway-pricing").new_words < 120
 
 
-# partner outreach (Partnerships) ------------------------------------------------
+# partner outreach (Business development) ----------------------------------------
 def test_partner_outreach_v1_to_v2_is_ready(demo_store):
     suite = demo_store.load_suite("partner-outreach")
-    assert suite.team == "Partnerships"
+    assert suite.team == "Business development"
     assert [c.name for c in suite.rubric if c.deal_breaker] == ["Accurate to the notes"]
     comp = build_comparison(demo_store, "partner-outreach", "v1", "v2", live=False)
     assert rows(comp) == PARTNER
@@ -146,7 +148,7 @@ def test_partner_outreach_v1_to_v2_is_ready(demo_store):
     assert (fmt(comp.avg_current), fmt(comp.avg_new)) == ("3.4", "3.8")
     assert comp.verdict == "Ready to roll out"
     assert misses(comp) == {}
-    assert comp.mix_line == "Example mix: 2 everyday, 1 messy, 2 complicated, 1 that broke before."
+    assert comp.mix_line == "Example mix: 2 everyday, 1 messy, 2 tricky, 1 that caused a problem before."
 
 
 def test_partner_outreach_checks_really_flip(demo_store):
@@ -218,21 +220,43 @@ def test_every_demo_comparison(demo_store, suite, current, new, verdict, counts)
         assert (comp.worse, comp.better, comp.same) == counts
 
 
-def test_three_verdicts_reachable_in_demo(demo_store):
-    # Needs review arrives in demo data with partner outreach version 3 (PR 2).
+def test_four_verdicts_reachable_in_demo(demo_store):
     pairs = [("followup-email", "v2", "v4"), ("followup-email", "v2", "v3"),
-             ("webinar-invite", "v1", "v2"), ("webinar-invite", "v2", "v3")]
+             ("webinar-invite", "v1", "v2"), ("webinar-invite", "v2", "v3"), ("partner-outreach", "v2", "v3")]
     verdicts = {build_comparison(demo_store, *p, live=False).verdict for p in pairs}
-    assert verdicts == {"Ready to roll out", "Not ready to roll out", "No clear difference"}
+    assert verdicts == {"Ready to roll out", "Not ready to roll out", "No clear difference", "Needs review"}
+
+
+PARTNER_V3 = {
+    "tidewater-two-contacts": ("4.0", "3.2", "worse"),
+    "pinecrest-booth-notes": ("3.5", "4.2", "better"),
+    "harlow-cold": ("3.8", "4.5", "better"),
+    "summit-said-no": ("3.8", "4.2", "better"),
+    "cobalt-reseller": ("4.2", "4.2", "same"),
+    "brightline-competitor": ("3.8", "4.0", "same"),
+}
+
+
+def test_partner_outreach_v2_to_v3_needs_review(demo_store):
+    comp = build_comparison(demo_store, "partner-outreach", "v2", "v3", live=False)
+    assert rows(comp) == PARTNER_V3
+    assert (comp.worse, comp.better, comp.same) == (1, 3, 2)
+    assert (fmt(comp.avg_current), fmt(comp.avg_new)) == ("3.8", "4.1")
+    assert comp.verdict == "Needs review" and misses(comp) == {}
+    assert comp.explanation == ("Version 3 made 3 examples better and 1 example worse. The average score went up "
+                                "from 3.8 to 4.1, which would have hidden the problem.")
+    for r in comp.rows:  # shorter, and still passes every quick check
+        assert all(c.new.passed for c in r.checks) and r.new_words < 80
+    assert comp.row("tidewater-two-contacts").criteria[0].new == 3  # weaker, but no deal-breaker miss
 
 
 def test_demo_prompts_have_teams_and_a_mix(demo_store):
     assert {s.id: s.team for s in demo_store.suites()} == {
-        "followup-email": "Sales", "partner-outreach": "Partnerships", "webinar-invite": "Marketing"}
+        "followup-email": "Sales", "partner-outreach": "Business development", "webinar-invite": "Marketing"}
     for sid in demo_store.suite_ids():
         cases = demo_store.load_cases(sid)
         assert not needs_harder_examples(cases), sid
-        assert "broke before" in example_mix(cases), sid
+        assert "caused a problem before" in example_mix(cases), sid
 
 
 def test_every_recorded_version_covers_every_case(demo_store):

@@ -2,62 +2,95 @@
 
 **The output reveals the gap.**
 
-A prompt change looks fine until you run it on real examples. Rollout Ready runs your edited prompt on the examples your team cares about and shows you what it broke, before your team finds out. It is built for the people who own a shared prompt in sales, marketing and partnerships teams, who are not engineers, so everything happens in the browser in plain words.
+Test, review and roll out changes to your team's AI instructions. See what improved, what got worse, and what needs your judgment before updating your team's tool.
 
-![The start screen: "What would you like to do?" with the latest result and four cards](docs/screenshots/start-desktop.png)
+**Try it:** https://rollout-ready-103749504031.us-east1.run.app
 
-![See results, with the deal-breaker callout and the evidence line](docs/screenshots/results-desktop.png)
+![Manage: the start screen, with the instructions each owner manages and one status line for each](docs/screenshots/start-desktop.png)
 
-![One example, with "I disagree with the AI reviewer" open](docs/screenshots/example-detail-desktop.png)
+![A Not ready to roll out result: the verdict, one sentence, the missed deal-breaker, the evidence line and one main action](docs/screenshots/result-not-ready-desktop.png)
 
-<img src="docs/screenshots/start-phone.png" alt="Start screen at phone width" width="320">
+<img src="docs/screenshots/start-phone.png" alt="Manage at phone width" width="320">
 
 ## The problem
 
-Many teams rely on one shared prompt: a custom GPT, a Gem, a Claude Project, a Copilot agent or a prompt in a shared doc. Someone owns it. When they want to improve it, they tweak it, try it once, and roll it out. Sometimes the tweak quietly breaks the examples they didn't think to try, and the team stops trusting the tool.
+Teams rely on shared AI instructions: a prompt or snippet, a Claude Project, a custom GPT or Gem, a skill or an agent. The owner tweaks them, tries them once, and rolls them out. Sometimes the tweak quietly breaks inputs nobody thought to try, and the team stops trusting the tool.
 
-## What it does
+## Who it's for
 
-1. **Your prompts.** Each prompt has its versions, 6 to 8 saved **examples** (only inputs, never ideal answers), and a description of **what good looks like**: 3 to 5 **qualities**, each scored 1 to 5, with one or two **deal-breakers**.
-2. **Test a change.** Paste the version you're trying and a one-line note on what changed.
-3. It runs on every example. Each output gets **quick checks** (plain rules like a word limit) and is scored blind by the **AI reviewer** (Claude), with a one-sentence reason for every score.
-4. **See results.** Each example is marked **Got worse**, **Got better** or **About the same**, and you get one verdict: Ready to roll out, Needs review, Not ready to roll out, No clear difference, or Test incomplete when something is missing. You also get a summary to paste into Slack or email.
-5. **Disagree if you need to.** On any example you can say "I disagree with the AI reviewer". Your call, with a one-line reason, replaces the AI reviewer's for those results, but a missed deal-breaker still blocks.
+The owner of a set of AI instructions in a sales, marketing, business development or revenue operations team. They are not engineers, so everything happens in the browser, in plain words.
 
-The full rules for each result and verdict are in [How it works and why](docs/design.md).
+## How it works
+
+1. **Manage.** Each set of AI instructions has its versions, 6 to 8 saved **examples** (only inputs, never ideal answers), and **what good looks like**: 3 to 5 **qualities**, each scored 1 to 5, with one or two **deal-breakers**.
+2. **Test a change.** Edit the version your team uses now and say what you're changing and why.
+3. It runs on every example. Each answer gets **quick checks** (plain rules like a word limit) and is scored blind by the **AI reviewer** (Claude), with a one-sentence reason for every score.
+4. **Review the result.** One verdict, one sentence, the evidence and one main action on top. What went wrong, every example, what changed and the details sit in tabs.
+5. **Roll out by hand, then confirm.** Copy the new instructions into your team's tool yourself and confirm. Rollout Ready records the decision; it doesn't update the tool.
+
+| Verdict | When |
+| --- | --- |
+| Ready to roll out | Nothing got worse, at least one got better, no deal-breaker missed |
+| Needs review | Some got worse, more got better, no deal-breaker missed |
+| Not ready to roll out | A deal-breaker missed on any example, or some got worse and no more got better |
+| No clear difference | Nothing got clearly better or worse |
+| Test incomplete | An answer or review is missing or was cut off, so there's no verdict |
+
+| Type | Tested | Not tested |
+| --- | --- | --- |
+| Prompt or snippet | The prompt as your team uses it | Inputs you haven't saved as examples |
+| Claude Project | The instructions, plus key facts pasted in | The Project's uploaded files |
+| GPT or Gem instructions | The instructions, run on Claude | How it behaves on the other company's model |
+| Skill | The skill's written instructions | When it gets picked up, and bundled files or scripts |
+| Agent instructions | The instructions and the replies it writes | Its tools and actions |
 
 ## Key design choices
 
-- **One broken example matters more than the average.** In the demo, version 3 of the follow-up email raised the average from 3.6 to 3.9 but stopped answering customers' questions on 2 examples, so it is "Not ready to roll out."
-- **Deal-breakers block a rollout.** If the version you're trying misses a deal-breaker (a score of 2 or lower) on any example, it can't be "Ready to roll out", whatever the average says.
-- **People get the last word.** Overrides need a one-line reason, apply only to the results they were made on, never change stored scores or hide a missed deal-breaker, and are listed on the verdict and in the shared summary.
-- **Honest about the evidence.** Every verdict says "Based on N examples. Even when a version is ready, spot-check real outputs in its first week."
-- **A good example mix.** Each example is Everyday, Messy or incomplete, Complicated, or Broke before, and the app nudges you when there are no messy or complicated ones.
-- **Blind, independent scoring.** The AI reviewer scores one output at a time and never sees which version wrote it, or the other version's output.
-- **Plain words, in the browser.** No files, Git or terminal for the main flow, and no engineering words on screen.
-- **Demo mode uses the real logic.** It replays recorded outputs and scores through the exact same checks, scoring and verdict code as live mode.
+- **One broken example matters more than the average.** In the demo, version 3 of the Sales follow-up assistant raised the average from 3.6 to 3.9 but stopped answering customers' questions on 2 examples, so it is "Not ready to roll out."
+- **Deal-breakers always block.** A score of 2 or lower on a deal-breaker, in any run, means "Not ready to roll out". People can overrule the AI reviewer on an example, with a reason, but never hide a missed deal-breaker.
+- **Rolling out is recorded, not performed.** Each release says which version, when, who confirmed it, and the test it relied on. An exception keeps its original verdict.
+- **Honest about the evidence.** Every verdict says "Based on N examples." Ready adds: "Even when a version is ready, spot-check real outputs in its first week."
+- **Blind scoring, real logic in the demo.** The AI reviewer never sees which version wrote an answer, and the demo replays recorded answers through the same scoring and verdict code.
+
+## What's saved
+
+- **Demo with sample results:** your changes live in your browser until you close it. Nothing is saved on the server.
+- **Live demo:** your tests are private to your browser session and last up to 24 hours. Its storage is temporary and may reset sooner.
+- **On your own computer with a Claude key:** tests, examples and releases are saved on that computer.
+
+## Cost controls
+
+Each example needs one answer call and one review call per version. Saved answers and reviews are reused whenever nothing that produced them changed: a changed quality reruns only the reviews, a changed quick check reruns nothing, and the version in use keeps its results. A temporary failure is retried at most twice. The live demo allows 3 tests per visitor, 5 per address and 5 in total each day.
 
 ## Testing
 
-`pytest` covers the scoring edges, every verdict, every demo number, overrides, public live mode limits, and scans that fail on engineering words in any page or an em dash in any file. The full list is in [Under the hood](docs/architecture.md#what-the-tests-cover).
+`pytest` covers every verdict, every demo number, reuse, overrides, releases, public limits and privacy, and scans for engineering words on any page and em dashes in any file. See [Under the hood](docs/architecture.md#what-the-tests-cover).
 
 ## Limitations
 
-- The AI reviewer is a model and can be wrong. Read its reasons on any example that got worse, and override it when you disagree.
-- The same model family writing and reviewing may favor its own style.
-- Tests run on Claude. If your team's assistant runs on another model, results show how the prompt behaves on Claude, which may differ.
+- Rolling out is a record, not an update: Rollout Ready doesn't change or watch your team's tool.
+- Owners are self-reported names. There are no accounts.
+- Every type is tested as written instructions only: no uploaded files, tools or scripts.
+- The live demo's storage is temporary.
+- The AI reviewer is a model and can be wrong. Read its reasons, and overrule it when you disagree.
 - 6 to 8 examples are a smoke test, not statistics.
-- The time and call estimate counts calls, not retries: a call that briefly fails can be tried up to 2 more times.
-- There are no user accounts, and saved work does not persist on Cloud Run.
+- The time estimate counts calls, not retries: a call that briefly fails can be tried up to 2 more times.
 
 More are listed in [Known limitations](docs/design.md#known-limitations).
+
+## What I'd build next
+
+- **Library:** a page where the whole team finds the version in use for each set, with the evidence behind it.
+- **Report a bad answer:** teammates save an input that went wrong, and the owner turns it into an example.
+- **Six more sets** for sales, marketing, business development and revenue operations.
+- **A new Add AI instructions page,** with type cards and owner and where-it's-used fields.
 
 ## Part of a set
 
 Rollout Ready is one of three apps that follow an AI tool through its life at a company:
 
 * [Sandbox to Shipped](https://github.com/jmims-workflow/Sandbox-to-Shipped): should we build or approve this AI tool?
-* Rollout Ready (this repo): does a change to the tool's prompt make it better or worse before the team sees it?
+* **Rollout Ready** (this repo): is a change to the tool's instructions ready to roll out, and which version is in use now?
 * [AI Adoption & Impact Tracker](https://github.com/jmims-workflow/ai-adoption-tracker): once it's live, are people using it, and is it helping?
 
 They are separate apps with no shared code. Together they cover deciding, testing and measuring.
@@ -84,7 +117,7 @@ export ANTHROPIC_API_KEY=your-key-here
 rollout serve
 ```
 
-For teams that keep prompts in a repo, the command line exits with code 0 when a version is ready or makes no clear difference, 1 when it is not ready or needs review, and 2 when the test is incomplete:
+The command line exits with code 0 when a version is ready or makes no clear difference, 1 when it is not ready or needs review, and 2 when the test is incomplete:
 
 ```bash
 rollout run followup-email --current v2 --new v3
@@ -92,7 +125,9 @@ rollout run followup-email --current v2 --new v3
 
 ## More detail
 
-- [How it works and why](docs/design.md): results, verdicts, design principles, adding a prompt, all limitations
+- [How it works and why](docs/design.md): results, verdicts, design principles, adding AI instructions, all limitations
 - [Under the hood](docs/architecture.md): technical terms, scoring details, file layout, command line, demo data, tests
 - [Configuration](docs/configuration.md): demo and live mode, settings, public live mode and its limits
 - [Deploy](docs/deploy.md): Cloud Run, secrets and a spending cap
+
+The current screens were built from a written spec with Claude Code, and each change was reviewed as screenshots before merging.

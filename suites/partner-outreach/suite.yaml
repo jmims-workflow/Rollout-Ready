@@ -1,12 +1,12 @@
-name: Partner outreach first message
-description: Turns a partnerships rep's notes into a first message to a possible reseller or integration partner.
+name: Partner outreach
+description: Turns a business development rep's notes into a first message to a possible reseller or integration partner.
 type: skill
-team: Partnerships
-who_uses_it: Partnerships reps, before first contact with a possible reseller or integration partner.
+team: Business development
+who_uses_it: Business development reps, before first contact with a possible reseller or integration partner.
 owner_name: Ama Okafor
 owner_team: Business development
 where_text: Claude, with the Partner outreach skill turned on
-input_label: What a partnerships rep would paste in
+input_label: What a business development rep would paste in
 model: claude-sonnet-5-5
 repeats: 1
 threshold: 0.5

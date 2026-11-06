@@ -2,9 +2,9 @@
 
 ## What it is
 
-A Python web app that lets the owner of a team's shared AI prompt test a change before the team sees it. They paste the version they're trying in the browser, it runs on saved examples, every output is scored (quick checks plus a blind AI reviewer), and the app gives one verdict. Tagline: "Test a prompt change before your team sees it." README opener: "The output reveals the gap."
+A Python web app for the owner of a team's shared AI instructions (prompts and snippets, Claude Projects, GPT or Gem instructions, skills, agent instructions). They edit the version in use in the browser, it runs on saved examples, every answer is scored (quick checks plus a blind AI reviewer), and the app gives one verdict. They update the real tool by hand and confirm; Rollout Ready records the decision. Tagline: "Test, review and roll out changes to your team's AI instructions." README opener: "The output reveals the gap."
 
-Users are the people who own a shared prompt in sales, marketing and partnerships teams: enablement leads, marketing ops managers, team leads. They are not engineers and don't use GitHub, files or a terminal. Every screen must make sense to them without a glossary. The browser flow is the product; the CLI is secondary.
+Users are the people who own shared AI instructions in sales, marketing, business development and revenue operations teams: enablement leads, marketing ops managers, team leads. They are not engineers and don't use GitHub, files or a terminal. Every screen must make sense to them without a glossary. The browser flow is the product; the CLI is secondary.
 
 ## Plain words (user-facing text)
 
@@ -12,7 +12,7 @@ Every word a user sees (pages, buttons, labels, verdict sentences, the copied su
 
 | Technical | On screen |
 | --- | --- |
-| suite | prompt (one saved prompt with its versions and examples) |
+| suite | AI instructions (one set, with its versions, examples and what good looks like) |
 | test case | example |
 | rubric | what good looks like |
 | criterion | quality |
@@ -20,10 +20,12 @@ Every word a user sees (pages, buttons, labels, verdict sentences, the copied su
 | automatic checks | quick checks |
 | Worse / Better / No clear change | Got worse / Got better / About the same |
 | current version / new version | the version your team uses now / the version you're trying |
-| Compare page | See results (`/results`) |
-| Test a new version page | Test a change (`/test`) |
-| Suites page | Your prompts (`/prompts`) |
+| Start screen | Manage (`/`) |
+| Suite page | the instructions page (`/i/<id>`): Test history, Version history, Examples, What good looks like |
+| Test a new version page | Test a change (`/i/<id>/test`) |
+| Compare page | the result page (`/i/<id>/result`) |
 | How scoring works page | How it works (`/how-it-works`) |
+| Example kinds | Everyday, Messy, Tricky, Caused a problem before |
 | Run details tab | Behind the scenes |
 | Prompt changes tab | What changed (diff labels Kept, Removed, Added) |
 | Cases tab | Examples |
@@ -58,8 +60,8 @@ Live mode: `ROLLOUT_MODE=live` plus `ANTHROPIC_API_KEY`. Public live mode adds `
 - `rollout_ready/runner.py` estimates, the Test a change estimate, and background jobs
 - `rollout_ready/public.py` public live mode: per-visitor `SessionStore`, shared answers and reviews for demo versions, usage limits, Origin check
 - `rollout_ready/storage.py` suite files: `suites/<id>/suite.yaml, cases.yaml, versions/vN.md, recorded/, history.json`, and records under `runs/` (`answers/`, `reviews/`, `evaluations/`, `releases.json`, `override-events.json`)
-- `rollout_ready/web/` FastAPI app, Jinja2 templates, plain CSS, small vanilla JS. Start screen at `/`; old URLs `/suites` and `/scoring` redirect.
-- Demo prompts: `followup-email` (Sales, featured v2 to v3), `partner-outreach` (Partnerships), `webinar-invite` (Marketing). Each has `history.json`: version 2 is in use for all three; webinar version 2 is a roll out anyway on a No clear difference result.
+- `rollout_ready/web/` FastAPI app, Jinja2 templates, plain CSS, small vanilla JS. Pages: Manage `/`, instructions `/i/<id>`, Test a change `/i/<id>/test`, result `/i/<id>/result`, How it works. Old addresses (`/prompts`, `/prompts/<id>`, `/test`, `/results`, `/suites`, `/scoring`) redirect. Header nav: Manage, How it works.
+- Demo sets: `followup-email` "Sales follow-up assistant" (Sales, featured v2 to v3), "Partner outreach" and "Webinar invite writer", `partner-outreach` (Business development; v2 to v3 is Needs review), `webinar-invite` (Marketing). Each has `history.json`: version 2 is in use for all three; webinar version 2 is a roll out anyway on a No clear difference result.
 
 ## Scoring rules
 
@@ -75,7 +77,7 @@ Live mode: `ROLLOUT_MODE=live` plus `ANTHROPIC_API_KEY`. Public live mode adds `
 - Cut-off answers or reviews are incomplete items and never retried automatically. Temporary failures retry at most twice (our code; the SDK's retries are off).
 - Overrides belong to one evaluation's evidence (fingerprint plus example), are append-only (removing one appends a removal event), never change stored scores, never carry over to changed evidence, and never hide or lift a deal-breaker miss. Live: `runs/override-events.json`; demo: signed session cookie.
 - Release boundary: Rollout Ready records a person's decision and never updates the external tool. Release history is append-only (baseline, rollout, exception, return); In use, Retired and Draft are derived from it, never stored. A rollout relies on a saved, complete, current evaluation against the version in use; Roll out anyway needs a reason, the deal-breaker box on Not ready, and an acknowledgment when a different version is now in use, and keeps its verdict; Put back into use needs a reason and relies on no test. Every check runs again on submit, and a one-time token turns a double submit into the existing release.
-- Example kinds: everyday, messy, complicated, broke_before. Nudge when there are no messy or complicated examples.
+- Example kinds (YAML keys): everyday, messy, complicated, broke_before; on screen Everyday, Messy, Tricky, Caused a problem before. Nudge when there are no messy or tricky examples.
 - Show scores to one decimal place. Demo numbers are pinned by `tests/test_demo_data.py`; change demo data only if those still pass.
 
 ## Public live mode (ROLLOUT_PUBLIC=true, plus live mode and a key)
@@ -85,10 +87,18 @@ Live mode: `ROLLOUT_MODE=live` plus `ANTHROPIC_API_KEY`. Public live mode adds `
 - Privacy: anything a visitor writes or adds (versions, examples, edits, new prompts, results, overrides, jobs) is visible only to that session. Session id is in the signed cookie, ends with the browser and is refused after 24 hours; old folders are pruned.
 - Shared cache (`ROLLOUT_DATA_DIR/shared/`) holds only real results for an unchanged demo version on an unchanged demo example with the demo rubric and model. Nothing a visitor wrote may ever go there.
 - Comparisons are all real or all sample, never mixed. Public visitors see the demo's sample comparison when real results are incomplete and sample results are complete.
-- Limits: `ROLLOUT_MAX_RUNS_PER_SESSION` (3), `ROLLOUT_MAX_RUNS_PER_IP_PER_DAY` (5, first `X-Forwarded-For` address, stored hashed), `ROLLOUT_MAX_RUNS_PER_DAY` (10). A run is a test, "Run the missing examples", saving a new prompt, or "Suggest qualities for me". At most 8 examples per test, 5,000 characters per prompt or example. Check limits after form validation and before any call; a refused run makes no calls. Sample pages must keep working when limits are used up.
+- Limits: `ROLLOUT_MAX_RUNS_PER_SESSION` (3), `ROLLOUT_MAX_RUNS_PER_IP_PER_DAY` (5, first `X-Forwarded-For` address, stored hashed), `ROLLOUT_MAX_RUNS_PER_DAY` (5). A run is a test, "Run the missing examples", saving a new prompt, or "Suggest qualities for me". At most 8 examples per test, 5,000 characters per prompt or example. Check limits after form validation and before any call; a refused run makes no calls. Sample pages must keep working when limits are used up.
 - Spam: the honeypot field (`website`) on every form that can call Claude; if filled, show a normal page and make no calls. POSTs must pass the Origin check.
-- Copy: "Your tests are private to you and last until you close this browser or for 24 hours. Don't paste anything confidential." on Test a change, Your prompts and Add a new prompt. "N of 3 live tests left today." on Test a change. Limit message: "Today's live tests are used up. Try again tomorrow, or explore the sample results."
+- Copy: "Your tests are private to you and last until you close this browser or for 24 hours. Don't paste anything confidential." on Test a change, Manage and Add AI instructions. "N of 3 live tests left today. Uses 1 of your 3 live tests today." on Test a change. The demo strip says how long a visitor's work lasts. Limit message: "Today's live tests are used up. Try again tomorrow, or explore the sample results."
 - Deploy with `--max-instances 1` and the key in Secret Manager. `tests/test_public.py` covers all of this.
+
+## Screens (PR 2a decisions)
+
+- Manage has no latest-result banner. Set cards use neutral status lines: no warning icon, no alert colors. Warning styling is for the result page only.
+- The result page shows one clear answer: above the fold only the verdict, one sentence, the evidence line, one short line for any missed deal-breaker (never hidden) and one main action. Everything else (What this test covers, About this test, help) is behind a disclosure or in tabs: What went wrong (opens first for Not ready and Needs review), Examples (opens first otherwise), What changed, Behind the scenes.
+- "What's this?" help at the first mention on each page of the verdict, example kinds, deal-breakers and the AI reviewer; on the result page the verdict and deal-breaker help sit in "What this test covers".
+- Claims rule: describe evidence precisely; never say a change is safe, proven or guaranteed. Banned anywhere: "Only what passes rolls out", "Proven on real examples", "can't break what already worked without you knowing", "Nothing left out".
+- Not built yet (do not mention on screen): the Library, Report a bad answer, the six new sets, the new Add AI instructions page and fields, suggested examples from reports. The README lists them under "What I'd build next".
 
 ## Project rules
 
@@ -100,7 +110,7 @@ Live mode: `ROLLOUT_MODE=live` plus `ANTHROPIC_API_KEY`. Public live mode adds `
 - Accessible on any screen size: labels on every input, visible focus, 44px targets, 4.5:1 contrast, no sideways scroll at 320px, reduced motion respected. No gradients, no emoji.
 - Plain UI copy for non-engineers: follow the word list above. Never "system prompt", "eval", "regression".
 - Colors: plum and blush, each defined once as a CSS custom property in `style.css`; use only those.
-- Every verdict shows the evidence line: "Based on N examples. Even when a version is ready, spot-check real outputs in its first week."
+- Every verdict shows the evidence line "Based on N examples."; Ready to roll out adds "Even when a version is ready, spot-check real outputs in its first week."
 - Don't add features beyond the spec without asking.
 
 ## Git

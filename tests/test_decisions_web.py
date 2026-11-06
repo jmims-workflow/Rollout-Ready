@@ -143,7 +143,8 @@ def test_demo_changed_version_in_use_offers_the_right_test(demo):
     text = page_text(page)
     assert ("This test compared version 3 with version 2. Version 4 is in use now, so it doesn't show how "
             "version 3 compares with what your team uses.") in text
-    assert "Test version 3 against version 4" in text and "/results?suite=followup-email&amp;current=v4&amp;new=v3" in page
+    assert "Test version 3 against version 4" in text and "/i/followup-email/result?current=v4&amp;new=v3" in page
+    assert text.count("Test version 3 against version 4") == 1  # the main action, once
     assert "I understand this test didn't compare against the version in use." in text
     assert "compared with version 2, the version your team uses now" not in text
 
@@ -285,9 +286,12 @@ def test_fix1_retired_rows_name_the_version_they_were_tested_against(demo):
 
 def test_fix2_not_ready_links_to_test_a_change(demo):
     page = demo.get(NOT_READY).text
+    # PR 2a: the main action is "Edit and test again", which opens Test a change starting from version 3.
+    actions = page_text(page.split('<div class="verdict-actions">')[1].split("</div>", 1)[0])
+    assert actions == "Edit and test again"
+    assert 'href="/i/followup-email/test?from=v3">Edit and test again</a>' in page
     block = page_text(page.split('<section class="card decision"')[1].split(">", 1)[1])
-    assert block.startswith("What happens next Test a change")
-    assert "/test?suite=followup-email&amp;against=v2" in page and "Edit and test again" not in page_text(page)
+    assert block.startswith("What happens next Roll out anyway")
 
 
 def test_fix3_counts_read_right_for_one_and_for_more(demo, live, live_settings):
@@ -327,7 +331,7 @@ def test_fix5_rollback_links_to_the_put_back_form(demo):
     record = demo.get(r.headers["location"]).text
     assert "If something goes wrong, copy version 2, paste it back into your tool, and mark version 2 as in use." \
         in page_text(record)
-    link = "/prompts/followup-email?put_back=v2#put-back-v2"
+    link = "/i/followup-email?put_back=v2#put-back-v2"
     assert f'href="{link}"' in record and "Put version 2 back into use" in page_text(record)
     prompt = demo.get(link.split("#")[0]).text
     assert '<details class="put-back" id="put-back-v2" open>' in prompt

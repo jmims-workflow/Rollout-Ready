@@ -37,6 +37,12 @@ def estimate(case_count: int, repeats: int) -> tuple[int, str]:
     return calls, when
 
 
+def time_sentence(case_count: int, repeats: int) -> str:
+    """For Test a change: how long, with no call counts (spec 7c)."""
+    calls, when = estimate(case_count, repeats)
+    return "Takes no time: every result is saved already." if not calls else f"Takes {when}."
+
+
 def estimate_sentence(case_count: int, repeats: int) -> str:
     calls, when = estimate(case_count, repeats)
     if not calls:

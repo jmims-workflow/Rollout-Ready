@@ -302,9 +302,12 @@ class Comparison:
 
     @property
     def evidence_line(self) -> str:
+        """Every verdict says how many examples it rests on; Ready adds the spot-check reminder."""
         n = len(self.rows)
-        return (f"Based on {n} {scoring._cases(n)}. Even when a version is ready, "
-                "spot-check real outputs in its first week.")
+        line = f"Based on {n} {scoring._cases(n)}."
+        if self.verdict == scoring.READY:
+            line += " Even when a version is ready, spot-check real outputs in its first week."
+        return line
 
     @property
     def mix_line(self) -> str:
@@ -495,12 +498,12 @@ def prompt_diff(old: str, new: str) -> list[tuple[str, str]]:
 
 
 # example mix ------------------------------------------------------------------
-_MIX_WORDS = {"everyday": "everyday", "messy": "messy", "complicated": "complicated",
-              "broke_before": "that broke before"}
+_MIX_WORDS = {"everyday": "everyday", "messy": "messy", "complicated": "tricky",
+              "broke_before": "that caused a problem before"}
 
 
 def example_mix(cases: list[Case]) -> str:
-    """For example: "Example mix: 3 everyday, 2 messy, 2 complicated, 1 that broke before." """
+    """For example: "Example mix: 3 everyday, 2 messy, 2 tricky, 1 that caused a problem before." """
     counts = Counter(c.kind for c in cases)
     parts = [f"{counts[k]} {_MIX_WORDS[k]}" for k in CASE_KINDS if counts[k]]
     return "Example mix: " + ", ".join(parts) + "." if parts else ""
@@ -511,7 +514,7 @@ def needs_harder_examples(cases: list[Case]) -> bool:
     return bool(cases) and not any(c.kind in ("messy", "complicated") for c in cases)
 
 
-MIX_NUDGE = "Most prompts break on messy or complicated examples. Add one or two so this test means more."
+MIX_NUDGE = "Most AI instructions break on messy or tricky examples. Add one or two so this test means more."
 
 
 # shareable summary -----------------------------------------------------------

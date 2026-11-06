@@ -2,65 +2,79 @@
 {% block title %}How it works | {% endblock %}
 {% block content %}
 <h1 class="page-title">How it works</h1>
-<p class="lede">A 2 minute read on how Rollout Ready decides whether a prompt change is ready for your team.</p>
+<p class="lede">A 2 minute read on what Rollout Ready does, how it scores, and what each answer means.</p>
 
-<section class="card">
-  <h2>What the app does</h2>
-  <p>A prompt change can look fine when you try it once. Rollout Ready runs the version you're trying on a small set of saved examples, scores every output, and compares it with the version your team uses now. You get one answer, and a list of the examples that got worse.</p>
-  <p>An example is only an input: what someone on your team would paste in. Nobody writes the ideal answer.</p>
-</section>
+<ol class="how-points">
+  <li class="card">
+    <h2>What the app does</h2>
+    <p>When you change AI instructions your team relies on, Rollout Ready runs the version you're trying on saved examples and compares it with the version your team uses now. You review the evidence, update your team's tool yourself, then confirm, so everyone knows which version is in use.</p>
+    <p>An example is only an input: what someone on your team would paste in. Nobody writes the ideal answer.</p>
+  </li>
+  <li class="card">
+    <h2>How the AI reviewer scores</h2>
+    <p>The AI reviewer is Claude. It reads one answer at a time and scores it from 1 to 5 on each quality in what good looks like, with a one-sentence reason for every score. It never sees which version wrote the answer, or the other version's answer, so it can't take sides.</p>
+    <p>Quick checks run too: plain rules like a word limit, which always give the same answer.</p>
+  </li>
+  <li class="card">
+    <h2>Why one broken example matters more than the average</h2>
+    <p>A change can lift the average while quietly breaking the examples you care about. In the demo, version 3 of the Sales follow-up assistant raised the average from 3.6 to 3.9, but two emails stopped answering the customer's questions. So the answer is "Not ready to roll out."</p>
+    <p>An example got worse if its score dropped by half a point or more, it fails a quick check it used to pass, or it newly misses a deal-breaker. It got better if its score rose by half a point or more, or it passes a quick check it used to fail. Anything smaller is about the same, because every run varies a little.</p>
+    <p>Six to eight good examples catch most breakages. They can't prove a version will never break, because your team will paste in things nobody thought to test. That's why every result says how many examples it is based on.</p>
+  </li>
+  <li class="card">
+    <h2>What each verdict means</h2>
+    <ul>
+      <li><strong>Ready to roll out:</strong> nothing got worse, at least one got better, and no deal-breaker is missed.</li>
+      <li><strong>Needs review:</strong> some got worse, more got better, and no deal-breaker is missed. Look at the ones that got worse before deciding.</li>
+      <li><strong>Not ready to roll out:</strong> a deal-breaker is missed on any example, or some got worse and no more got better.</li>
+      <li><strong>No clear difference:</strong> nothing got clearly better or worse.</li>
+      <li><strong>Test incomplete:</strong> an answer or review is missing or was cut off, so there's no verdict until it runs.</li>
+    </ul>
+  </li>
+</ol>
 
-<section class="card">
-  <h2>How the AI reviewer scores</h2>
-  <p>The AI reviewer is Claude. It reads one output at a time and scores it from 1 to 5 on each quality in what good looks like, with a one-sentence reason for every score. An example's score is the average of those.</p>
-  <p>It scores blind: it is never told which version wrote the output, and it never sees the other version's output, so it can't take sides. Quick checks run too: plain rules like a word limit, which are free and always give the same answer.</p>
-</section>
-
-<section class="card">
-  <h2>Why one broken example matters more than the average</h2>
-  <p>A change can lift the average while quietly breaking the examples you care about. In the demo, version 3 of the follow-up email raised the average from 3.6 to 3.9, but two emails stopped answering the customer's questions. So the answer is "Not ready to roll out."</p>
-  <p>Each example is marked:</p>
-  <ul>
-    <li><strong>Got worse:</strong> its score dropped by half a point or more, it fails a quick check it used to pass, or it newly misses a deal-breaker.</li>
-    <li><strong>Got better:</strong> its score rose by half a point or more, or it passes a quick check it used to fail.</li>
-    <li><strong>About the same:</strong> anything smaller. Every run varies a little, so small moves don't count.</li>
-  </ul>
-  <p>Then the answer is:</p>
-  <ul>
-    <li>Any answer or review is missing or was cut off: <strong>Test incomplete</strong>. There's no verdict until the missing examples run.</li>
-    <li>A deal-breaker is missed on any example, or some got worse and no more got better: <strong>Not ready to roll out</strong>.</li>
-    <li>Some got worse, but more got better, and no deal-breaker is missed: <strong>Needs review</strong>. Look at the ones that got worse before deciding.</li>
-    <li>Nothing got worse, at least one got better, and no deal-breaker is missed: <strong>Ready to roll out</strong>.</li>
-    <li>Nothing got worse or better, and no deal-breaker is missed: <strong>No clear difference</strong>.</li>
-  </ul>
-</section>
-
-<section class="card">
-  <h2>Deal-breakers</h2>
-  <p>Some qualities matter more than the rest: getting the facts right, or answering every question. Mark those as deal-breakers. If the AI reviewer scores a deal-breaker {{ cutoff }} or lower on any example, even once when an example runs more than once, the version you're trying is "Not ready to roll out", whatever the average says. If it newly misses one, that example counts as Got worse.</p>
-  <p>Most prompts have one or two deal-breakers. If everything is a deal-breaker, nothing is.</p>
-</section>
-
-<section class="card">
-  <h2>Why you can disagree with the AI reviewer</h2>
-  <p>The AI reviewer is a model, and it can be wrong. You know your customers and your team. On any example, choose "I disagree with the AI reviewer", say what your call is, and give a one-line reason.</p>
-  <p>Your call changes how that example counts for those two versions only, and the answer is worked out again. The AI reviewer's scores are never changed, and the result says which examples you overrode and why, so anyone you share it with can see.</p>
-</section>
-
-<section class="card">
-  <h2>What a good example mix looks like</h2>
-  <p>Most prompts work on everyday inputs. They break on the hard ones. Six to eight examples is plenty if they include:</p>
-  <ul>
-    <li><strong>Everyday:</strong> a typical input, the kind the team pastes in most days.</li>
-    <li><strong>Messy or incomplete:</strong> rough notes, missing details, or things out of order.</li>
-    <li><strong>Complicated:</strong> several people, several asks, or details that are easy to mix up.</li>
-    <li><strong>Broke before:</strong> an input where a real output went wrong. When that happens, add it, with names and details changed.</li>
-  </ul>
-</section>
-
-<section class="card">
-  <h2>How much a result proves</h2>
-  <p>Every result says how many examples it is based on, and reminds you: even when a version is ready, spot-check real outputs in its first week.</p>
-  <p>Six to eight good examples catch most breakages. They can't prove a prompt will never break, because your team will paste in things nobody thought to test. Rollout Ready makes a change much safer, not risk-free.</p>
-</section>
+<h2 class="section-title">More detail</h2>
+<div class="how-more">
+  <details class="card">
+    <summary>Deal-breakers</summary>
+    <p>Some qualities matter more than the rest: getting the facts right, or answering every question. Mark those as deal-breakers. If the AI reviewer scores a deal-breaker {{ cutoff }} or lower on any example, even once when an example runs more than once, the version you're trying is "Not ready to roll out", whatever the average says.</p>
+    <p>Most sets of AI instructions have one or two deal-breakers. If everything is a deal-breaker, nothing is.</p>
+  </details>
+  <details class="card">
+    <summary>Disagreeing with the AI reviewer</summary>
+    <p>The AI reviewer is a model, and it can be wrong. On any example, choose "I disagree with the AI reviewer", say what your call is, and give a one-line reason. Your call changes how that example counts for those results only, and the answer is worked out again.</p>
+    <p>The AI reviewer's scores are never changed, a missed deal-breaker still blocks a rollout, and the result says which examples you overrode and why. If the examples or what good looks like change, your call doesn't carry over: you decide again.</p>
+  </details>
+  <details class="card">
+    <summary>A good example mix</summary>
+    <p>Most AI instructions work on everyday inputs. They break on the hard ones. Six to eight examples is plenty if they include:</p>
+    <ul>
+      {% for key, (label, hint) in kinds.items() %}<li><strong>{{ label }}:</strong> {{ hint[0]|lower }}{{ hint[1:] }}</li>{% endfor %}
+    </ul>
+    <p>When a real answer goes wrong, add that input as an example, with names and details changed.</p>
+  </details>
+  <details class="card">
+    <summary>What rolling out does and doesn't do</summary>
+    <p>Putting a version into use records your decision: which version, when, who confirmed it, and the test it relied on. You copy the instructions into your team's tool yourself, then confirm.</p>
+    <p>Rollout Ready doesn't update your AI tool, and it doesn't watch it afterward. "In use" means the version the owner last confirmed.</p>
+  </details>
+  <details class="card">
+    <summary>What each type tests</summary>
+    <div class="table-card table-scroll">
+    <table>
+      <thead><tr><th scope="col">Type</th><th scope="col">Tested</th><th scope="col">Not tested</th></tr></thead>
+      <tbody>{% for key, label in type_labels.items() %}<tr><th scope="row">{{ label }}</th><td>{{ scope_notes[key][0] }}</td><td>{{ scope_notes[key][1] }}</td></tr>{% endfor %}</tbody>
+    </table>
+    </div>
+    <p>Every type is tested the same way: the written instructions, sent with one saved example at a time, run on Claude.</p>
+  </details>
+  <details class="card">
+    <summary>What happens to your saved work</summary>
+    <ul>
+      <li><strong>This demo, with sample results:</strong> what you change lives in your browser until you close it. Nothing is saved on the server.</li>
+      <li><strong>The live demo, which runs on Claude:</strong> your tests are private to you and last up to 24 hours, or until you close this browser. They may reset sooner.</li>
+      <li><strong>Run on your own computer with a Claude key:</strong> tests, examples and every rollout are saved on that computer.</li>
+    </ul>
+  </details>
+</div>
 {% endblock %}

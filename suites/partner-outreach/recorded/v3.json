@@ -1,0 +1,188 @@
+{
+  "version": "v3",
+  "model": "claude-sonnet-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "ran_at": "2026-10-29T15:30:00Z",
+  "cases": {
+    "cobalt-reseller": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Nina,\n\nGreat to meet you at the Midwest Retail Ops Summit. You said your retail clients keep asking for shift scheduling, and FlowOS has a mobile app for hourly staff, which the tool you resell today doesn't. Resellers earn a 20 percent margin on first-year subscriptions. Could we talk for 20 minutes on Tuesday?\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "The summit, the missing mobile app and the 20 percent margin all match the notes and partner facts."
+            },
+            "why": {
+              "score": 4,
+              "reason": "Opens with the clients' requests and the mobile app gap Nina raised."
+            },
+            "ask": {
+              "score": 5,
+              "reason": "One 20 minute call with a named day."
+            },
+            "tone": {
+              "score": 4,
+              "reason": "Warm and brief, written to Nina."
+            }
+          },
+          "input_tokens": 410,
+          "output_tokens": 81,
+          "judge_input_tokens": 830,
+          "judge_output_tokens": 200
+        }
+      ]
+    },
+    "tidewater-two-contacts": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Ben,\n\nThanks for replying on LinkedIn. You said hours get typed twice, once in scheduling and again in payroll. FlowOS has an open scheduling API, so approved shifts could flow straight into Tidewater Payroll. Could we do a 20 minute call on Thursday?\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 3,
+              "reason": "Nothing wrong, but it drops the 40 shared customers and Grace Kim, both in the notes."
+            },
+            "why": {
+              "score": 3,
+              "reason": "Gives Ben's reason but leaves out the shared customers that make the fit."
+            },
+            "ask": {
+              "score": 4,
+              "reason": "A clear 20 minute call with a day, though it doesn't invite Grace as the notes asked."
+            },
+            "tone": {
+              "score": 3,
+              "reason": "Plain, but so short it reads abrupt for a two-person first message."
+            }
+          },
+          "input_tokens": 410,
+          "output_tokens": 65,
+          "judge_input_tokens": 830,
+          "judge_output_tokens": 200
+        }
+      ]
+    },
+    "pinecrest-booth-notes": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi,\n\nThanks for the chat at our booth. You said clinic front desks text patients from personal phones. Connect gives front desks a shared work inbox for patient messages, and I'm checking whether it runs on clinic tablets, as you asked. Could we talk for 20 minutes on Wednesday?\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Doesn't guess the contact's name and only promises to check the tablet question."
+            },
+            "why": {
+              "score": 4,
+              "reason": "Leads with the personal-phones problem he raised."
+            },
+            "ask": {
+              "score": 5,
+              "reason": "One 20 minute call with a named day."
+            },
+            "tone": {
+              "score": 4,
+              "reason": "Warm and short, without filling gaps in rough notes."
+            }
+          },
+          "input_tokens": 410,
+          "output_tokens": 72,
+          "judge_input_tokens": 830,
+          "judge_output_tokens": 200
+        }
+      ]
+    },
+    "harlow-cold": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Tess,\n\nYour September post said logistics clients struggle to get operations data out of scheduling tools. Insight turns scheduling data into the reports those clients want, and it can be resold on its own. Would you be open to a 20 minute call on Tuesday?\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "The post, the client problem and resale on its own all match."
+            },
+            "why": {
+              "score": 5,
+              "reason": "Opens with the exact problem from Harlow's own post."
+            },
+            "ask": {
+              "score": 4,
+              "reason": "One 20 minute call with a named day."
+            },
+            "tone": {
+              "score": 5,
+              "reason": "Plain and warm for a cold message, with nothing to skim past."
+            }
+          },
+          "input_tokens": 410,
+          "output_tokens": 68,
+          "judge_input_tokens": 830,
+          "judge_output_tokens": 200
+        }
+      ]
+    },
+    "summit-said-no": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Jorge,\n\nWhen we spoke in March 2025, Connect had no API, so the timing wasn't right. Connect has had an open messaging API since June 2026, so your field service app could send job updates through it. Could we reopen the conversation with a 20 minute call on Thursday?\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Gets the March 2025 date right and doesn't claim a recent conversation."
+            },
+            "why": {
+              "score": 4,
+              "reason": "Names the exact reason Jorge passed and what changed."
+            },
+            "ask": {
+              "score": 4,
+              "reason": "One 20 minute call with a named day."
+            },
+            "tone": {
+              "score": 5,
+              "reason": "Brief and honest about the gap since they last spoke."
+            }
+          },
+          "input_tokens": 410,
+          "output_tokens": 74,
+          "judge_input_tokens": 830,
+          "judge_output_tokens": 200
+        }
+      ]
+    },
+    "brightline-competitor": {
+      "model": "claude-sonnet-5-5",
+      "runs": [
+        {
+          "output": "Hi Owen,\n\nYou told our CEO last week that your clients want better reporting. Insight can be resold on its own, alongside ShiftBay, so your plants get the reports without changing their scheduling tool. Could we talk for 20 minutes on Wednesday?\n\nBest,\n[Your name]",
+          "scores": {
+            "accurate": {
+              "score": 4,
+              "reason": "Doesn't pitch FlowOS and keeps ShiftBay in place, as the notes asked."
+            },
+            "why": {
+              "score": 4,
+              "reason": "Leads with the reporting need Owen raised."
+            },
+            "ask": {
+              "score": 4,
+              "reason": "One 20 minute call with a named day."
+            },
+            "tone": {
+              "score": 4,
+              "reason": "Plain and respectful of the competing tool."
+            }
+          },
+          "input_tokens": 410,
+          "output_tokens": 62,
+          "judge_input_tokens": 830,
+          "judge_output_tokens": 200
+        }
+      ]
+    }
+  }
+}

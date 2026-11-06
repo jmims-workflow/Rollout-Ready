@@ -67,7 +67,7 @@ def test_sample_results_stay_visible(app):
     v = visitor(app)
     home = v.get("/").text
     assert "Live: runs on Claude" in home
-    assert "Latest result: version 3 of the discovery follow-up email is not ready to roll out." in home
+    assert "Version 4 tested against version 2: Ready to roll out." in home  # the set card, from sample results
     r = v.get(FEATURED + "&tab=details")
     assert r.status_code == 200 and "Not ready to roll out" in r.text
     assert r.text.count("Sample results") >= 2 and "Real results" not in r.text
@@ -75,10 +75,15 @@ def test_sample_results_stay_visible(app):
 
 
 def test_test_page_is_prefilled_and_shows_privacy_and_runs_left(app, suites_copy):
-    r = visitor(app).get("/test")
+    v = visitor(app)
+    r = v.get("/test")
+    # Spec 7c: the text box starts from the version in use; the saved example change is one click away.
+    v2 = (suites_copy / "followup-email" / "versions" / "v2.md").read_text().split("---\n", 2)[2].strip()
+    assert v2.splitlines()[-1] in r.text and "Starting from version 2, the version in use." in r.text
+    assert 'href="/i/followup-email/test?from=v4">Try a saved example change</a>' in r.text
     v4 = (suites_copy / "followup-email" / "versions" / "v4.md").read_text().split("---\n", 2)[2].strip()
-    assert v4.splitlines()[0] in r.text
-    assert "Edit this or paste your own, then run it." in r.text
+    assert v4.splitlines()[-1] in v.get("/i/followup-email/test?from=v4").text
+    assert "Uses 1 of your 3 live tests today." in r.text
     assert PRIVATE.replace("'", "&#39;") in r.text
     assert "3 of 3 live tests left today." in r.text
     assert "Up to 5,000 characters." in r.text
@@ -121,13 +126,14 @@ def test_one_session_never_sees_another(app, suites_copy, data_dir):
     assert "Secret pricing" not in b.get("/test").text
 
     # A new prompt is private too, even when it has the same name as a demo prompt.
-    a.post("/prompts/new", data={"action": "save", "name": "Discovery follow-up email", "prompt_text": "Alice prompt",
+    a.post("/prompts/new", data={"action": "save", "name": "Sales follow-up assistant", "prompt_text": "Alice prompt",
                                  "case_name_1": "One", "case_input_1": "Alice input", "crit_name_1": "Clear",
                                  "crit_five_1": "Very clear", "crit_one_1": "Unclear"})
     wait(app)
     assert "Alice prompt" not in b.get("/prompts/followup-email").text
-    assert b.get("/prompts").text.count("Discovery follow-up email") == 1
-    assert a.get("/prompts").text.count("Discovery follow-up email") == 2
+    card = '">Sales follow-up assistant</a></h3>'  # one card each
+    assert b.get("/prompts").text.count(card) == 1
+    assert a.get("/prompts").text.count(card) == 2
 
     # Nothing a visitor wrote lands in the shared prompts folder or the shared cache.
     assert snapshot(suites_copy) == before
@@ -299,3 +305,13 @@ def test_usage_resets_daily_but_session_count_stays():
         clock[0] += 20 * 60 * 60
         assert u.left("b" * 32, "1.1.1.1") == 1 and u.left("a" * 32, "1.1.1.1") == 1
         assert u.take("a" * 32, "2.2.2.2") and not u.take("a" * 32, "3.3.3.3")
+
+
+def test_default_daily_cap_is_5():
+    """Spec section 10, rule 8: 5 live runs a day across everyone by default, still 3 per session and 5 per address."""
+    assert (Limits().per_session, Limits().per_ip_per_day, Limits().per_day) == (3, 5, 5)
+
+
+def test_public_strip_says_how_long_work_lasts(app):
+    text = visitor(app).get("/").text
+    assert "Your work here lasts up to 24 hours and may reset sooner." in text

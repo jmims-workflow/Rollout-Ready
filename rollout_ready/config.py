@@ -38,7 +38,7 @@ class Limits:
     """Caps on live runs when the app is open to anyone (ROLLOUT_PUBLIC)."""
     per_session: int = 3
     per_ip_per_day: int = 5
-    per_day: int = 10
+    per_day: int = 5
 
 
 @dataclass(frozen=True)

@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% from "_macros.html" import notice, kind_field, honeypot %}
-{% block title %}Add a new prompt | {% endblock %}
+{% block title %}Add AI instructions | {% endblock %}
 {% block content %}
-<a class="back" href="/prompts">Your prompts</a>
-<h1 class="page-title">Add a new prompt</h1>
-<p class="lede">Five short steps. When you save, the prompt your team uses today becomes version 1 and is scored once, so every version you try has something to be compared with.</p>
+<a class="back" href="/">Manage</a>
+<h1 class="page-title">Add AI instructions</h1>
+<p class="lede">Five short steps. When you save, the instructions your team uses today become version 1 and is scored once, so every version you try has something to be compared with.</p>
 {% if not settings.is_live %}
 {{ notice("Demo: you can fill this in and try “Suggest qualities for me”, but saving is turned off because the demo can't call Claude.", "info") }}
 {% endif %}
@@ -20,11 +20,11 @@
     <h2 id="st1"><span class="step-num" aria-hidden="true">1</span>Name it</h2>
     <div class="slot-grid">
       <div class="field">
-        <label for="ns-name">Prompt name <span class="hint">For example, "Renewal risk summary".</span></label>
+        <label for="ns-name">Name <span class="hint">For example, "Renewal risk summary".</span></label>
         <input type="text" id="ns-name" name="name" value="{{ f.name }}" maxlength="120">
       </div>
       <div class="field">
-        <label for="ns-team">Team <span class="hint">Optional. For example, Sales, Marketing or Partnerships.</span></label>
+        <label for="ns-team">Team <span class="hint">Optional. For example, Sales, Marketing or Business development.</span></label>
         <input type="text" id="ns-team" name="team" value="{{ f.team }}" maxlength="60">
       </div>
     </div>
@@ -35,9 +35,9 @@
   </section>
 
   <section class="card step" aria-labelledby="st2">
-    <h2 id="st2"><span class="step-num" aria-hidden="true">2</span>Paste the prompt your team uses today</h2>
+    <h2 id="st2"><span class="step-num" aria-hidden="true">2</span>Paste the instructions your team uses today</h2>
     <div class="field">
-      <label for="ns-prompt">The prompt <span class="hint">Paste exactly what is in your custom GPT, Gem, Claude Project or shared doc. It becomes version 1.</span></label>
+      <label for="ns-prompt">The instructions <span class="hint">Paste exactly what is in your custom GPT, Gem, Claude Project or shared doc. It becomes version 1.</span></label>
       <textarea id="ns-prompt" name="prompt_text" class="prompt">{{ f.prompt_text }}</textarea>
     </div>
   </section>
@@ -66,7 +66,7 @@
     <p>Write 3 to 5 qualities. For each, say what a 5 and a 1 look like. The AI reviewer uses these to score every output.</p>
     <div class="row-actions flush-top">
       <button class="btn btn-secondary" type="submit" name="action" value="draft">Suggest qualities for me</button>
-      <span class="muted small">{{ "Claude suggests qualities from your prompt and examples, and which ones should be deal-breakers. You can edit them." if settings.is_live else "In the demo this fills in sample qualities for a Renewal risk summary, with suggested deal-breakers." }}</span>
+      <span class="muted small">{{ "Claude suggests qualities from your instructions and examples, and which ones should be deal-breakers. You can edit them." if settings.is_live else "In the demo this fills in sample qualities for a Renewal risk summary, with suggested deal-breakers." }}</span>
     </div>
     {% for i in range(1, 6) %}
     {% if i == 4 %}<details class="inline"{% if f['crit_name_4'] %} open{% endif %}><summary>Add a 4th or 5th quality</summary>{% endif %}
@@ -79,7 +79,7 @@
       </div>
       <div class="check-row">
         <input type="checkbox" id="kd{{ i }}" name="crit_deal_{{ i }}" value="1"{% if f['crit_deal_' ~ i] %} checked{% endif %}>
-        <label for="kd{{ i }}">This is a deal-breaker<span class="hint">Something the output must never get wrong. Most prompts have one or two.</span></label>
+        <label for="kd{{ i }}">This is a deal-breaker<span class="hint">Something the output must never get wrong. Most sets of instructions have one or two.</span></label>
       </div>
     </fieldset>
     {% if i == 5 %}</details>{% endif %}

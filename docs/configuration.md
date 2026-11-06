@@ -37,8 +37,8 @@ Set `ROLLOUT_PUBLIC=true` together with `ROLLOUT_MODE=live` and `ANTHROPIC_API_K
 
 What visitors get:
 
-- The demo prompts and their sample comparisons stay visible to everyone, labeled "Sample results", so a first visit opens on the featured result.
-- **Test a change** and **Your prompts** run on Claude for real. Test a change opens with version 4 of the follow-up email as an editable starting point.
+- The demo sets and their sample comparisons stay visible to everyone, labeled "Sample results".
+- **Test a change** runs on Claude for real. It starts from the version in use; "Try a saved example change" fills in version 4 of the Sales follow-up assistant as an editable starting point.
 - A visitor's test always runs both versions for real, never mixing sample and real results. Real results for the demo's own versions on the demo's own, unchanged examples contain nothing a visitor wrote, so they are cached and shared across visitors. Everything a visitor writes or adds (new versions, examples, edited examples, new prompts, their results and overrides) is private to them.
 
 Privacy: each visitor gets a random session id in a signed cookie. It ends when they close the browser and is refused after 24 hours. Their work lives in a folder for that session under `ROLLOUT_DATA_DIR` (default: a `rollout-ready` folder in the system temp directory) and is never shown to anyone else; folders older than a day are deleted. Test a change and Your prompts say so plainly and ask people not to paste anything confidential. Set `ROLLOUT_SECRET_KEY` so the cookie signature is stable.
@@ -49,7 +49,7 @@ Limits (environment variables, with their defaults):
 | --- | --- | --- |
 | `ROLLOUT_MAX_RUNS_PER_SESSION` | 3 | Live runs per visitor session |
 | `ROLLOUT_MAX_RUNS_PER_IP_PER_DAY` | 5 | Live runs per address per day (the first address in `X-Forwarded-For`, which is the visitor on Cloud Run) |
-| `ROLLOUT_MAX_RUNS_PER_DAY` | 10 | Live runs per day across all visitors |
+| `ROLLOUT_MAX_RUNS_PER_DAY` | 5 | Live runs per day across all visitors |
 
 A run is one test, one "Run the missing examples", one saved new prompt (scoring version 1) or one "Suggest qualities for me". Each test runs on at most 8 examples, and each pasted prompt or example is at most 5,000 characters. When a limit is reached, visitors see "Today's live tests are used up. Try again tomorrow, or explore the sample results." and every sample page keeps working. Test a change shows what is left, for example "2 of 3 live tests left today." Days are counted in UTC. Addresses are stored only as salted hashes, in `usage.json` in the data folder.
 

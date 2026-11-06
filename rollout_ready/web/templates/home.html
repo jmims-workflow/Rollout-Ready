@@ -1,33 +1,46 @@
 {% extends "base.html" %}
-{% from "_macros.html" import icon, verdict_icon %}
+{% from "_macros.html" import notice, team_tag %}
 {% block content %}
-<h1 class="home-title">What would you like to do?</h1>
-<p class="lede">Rollout Ready runs a prompt change on real examples, so you find out what it broke before your team does.</p>
+<section class="hero" aria-labelledby="hero-h">
+  <p class="hero-kicker">The output reveals the gap.</p>
+  <h1 id="hero-h" class="hero-title">Know what a change does before your team sees it.</h1>
+  <p class="lede">You wrote the rule. The AI broke it anyway. Rollout Ready runs a proposed change to your team's prompts, Projects, GPTs and skills on saved examples, scores each answer against what good looks like, and shows what improved, what got worse, and what needs your judgment before you update your team's tool.</p>
+  {% if show_new_here %}<p class="new-here"><a href="{{ featured_url }}">New here? See an example of a change it caught</a></p>{% endif %}
+</section>
 
-{% if latest %}
-<a class="latest verdict-{{ latest.verdict_key }}" href="{{ results_url(latest.suite.id, latest.current.id, latest.new.id) }}">
-  {{ verdict_icon(latest.verdict_key) }}
-  <span class="latest-text">{{ banner }}</span>
-  <span class="latest-link">See why</span>
-</a>
-{% endif %}
+<section aria-labelledby="familiar-h">
+  <h2 id="familiar-h">Sound familiar?</h2>
+  <ul class="familiar">
+    <li class="card"><h3>It still does the thing you told it not to.</h3><p>Every answer is scored against your rules, so you see which ones get ignored, and on which inputs.</p></li>
+    <li class="card"><h3>You fixed one thing and broke another.</h3><p>Every change runs on all your saved examples, so you see what a fix broke on them before your team does.</p></li>
+    <li class="card"><h3>No one can say whether the change helped.</h3><p>You get a verdict based on the evidence, and a record of what changed, why, and who decided.</p></li>
+  </ul>
+</section>
 
-<ul class="home-cards">
-  {% for href, ico, title, desc, meta in [
-      ('/test', 'pencil', 'Test a change', 'Paste an edited prompt and see how it does on your saved examples.', 'Start here'),
-      ('/results', 'bars', 'See results', 'Compare any two versions of a prompt and see what got better or worse.', saved_meta),
-      ('/prompts', 'stack', 'Your prompts', 'The prompts your team relies on, their examples, and what good looks like.', prompts_meta),
-      ('/how-it-works', 'book', 'How it works', 'How the AI reviewer scores, and why one broken example matters more than the average.', '2 minute read'),
-  ] %}
-  <li>
-    <a class="home-card" href="{{ href }}">
-      <span class="home-tile">{{ icon(ico) }}</span>
-      <span class="home-card-title">{{ title }}</span>
-      <span class="home-card-desc">{{ desc }}</span>
-      <span class="home-card-meta">{{ meta }}</span>
-    </a>
-  </li>
-  {% endfor %}
-</ul>
+{% macro set_card(c) -%}
+<li class="card set-card">
+  <p class="set-tags"><span class="tag">{{ c.suite.type_label }}</span> {{ team_tag(c.suite) }}</p>
+  <h3><a href="{{ c.url }}">{{ c.suite.name }}</a></h3>
+  {% if c.suite.description %}<p>{{ c.suite.description }}</p>{% endif %}
+  <p class="set-meta"><span>In use: version {{ c.in_use_number }}{% if c.since %}, since {{ day(c.since) }}{% endif %}</span>{% if c.suite.owner_name %}<span>Owner: {{ c.suite.owner_name }}{% if c.suite.owner_team %}, {{ c.suite.owner_team }}{% endif %}</span>{% endif %}</p>
+  <p class="set-status">{{ c.status }}{% if c.status_url %} <a href="{{ c.status_url }}">See the result<span class="visually-hidden"> for {{ c.suite.name }}</span></a>{% endif %}</p>
+</li>
+{%- endmacro %}
+
+<section aria-labelledby="manage-h">
+  <div class="page-head">
+    <h2 id="manage-h">Instructions you manage</h2>
+    <a class="btn" href="/prompts/new">Add AI instructions</a>
+  </div>
+  {% if settings.is_public %}{{ notice(private_note, "info") }}{% endif %}
+  {% if error %}{{ notice(error, "error") }}{% endif %}
+  <ul class="plain-list set-list">{% for c in waiting %}{{ set_card(c) }}{% endfor %}</ul>
+  {% if quiet %}
+  <details class="more-sets"{% if not waiting %} open{% endif %}>
+    <summary>Show {{ quiet|length }} more with no changes waiting</summary>
+    <ul class="plain-list set-list">{% for c in quiet %}{{ set_card(c) }}{% endfor %}</ul>
+  </details>
+  {% endif %}
+  {% if not waiting and not quiet %}<p>No AI instructions yet.</p>{% endif %}
+</section>
 {% endblock %}
-{% block footer %}{% if not settings.is_live %}This demo uses sample results for a fictional company, Northstar Systems. Nothing you type here is saved.{% else %}Rollout Ready. <a href="/how-it-works">How it works</a>{% endif %}{% endblock %}
